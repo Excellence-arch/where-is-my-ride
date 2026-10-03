@@ -11,13 +11,13 @@ function simulated(id: string) {
   const t = (Date.now() - startedAt) / 1000;
   const d = liveDelivery(PRIMARY_WAYBILL)!;
   const script = [
-    { at: 6, role: "assistant", message: "Hello, this is WhereIsMyRider. I can help with your delivery. What's your waybill number?" },
-    { at: 10, role: "user", message: "It's L G nine oh two one oh. Where is my rider?" },
+    { at: 6, role: "assistant", message: "Good afternoon! This is Tolu from WhereIsMyRider. How far, abeg what's your waybill number?" },
+    { at: 10, role: "user", message: "It's L G nine oh two one oh. Where my rider dey?" },
     { at: 13, role: "assistant", message: spokenStatus(d) },
-    { at: 18, role: "user", message: "What did I order and have I paid?" },
-    { at: 21, role: "assistant", message: "You ordered two Refuel Max meals, chicken wings and two Chapmans from Chicken Republic. It's paid with card, total sixteen thousand seven hundred naira." },
-    { at: 25, role: "user", message: "Thank you." },
-    { at: 27, role: "assistant", message: "You're welcome! Enjoy your meal." },
+    { at: 18, role: "user", message: "Wetin I order sef, and have I paid?" },
+    { at: 21, role: "assistant", message: "You ordered two Refuel Max meals, one chicken wings and two Chapman from Chicken Republic. Total na sixteen thousand, seven hundred naira, and you don pay with card already." },
+    { at: 25, role: "user", message: "Okay, thank you o." },
+    { at: 27, role: "assistant", message: "No wahala at all! Enjoy your food, and thank you for choosing WhereIsMyRider." },
   ];
   const status = t < 4 ? "ringing" : t < 30 ? "answered" : "ended";
   return {

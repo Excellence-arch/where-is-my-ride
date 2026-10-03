@@ -44,7 +44,7 @@ function lookup(rawId: unknown, rawPhone?: unknown) {
 
   return NextResponse.json({
     success: false,
-    message: "I could not find a delivery for that waybill number. Please check and try again.",
+    message: "Ah, sorry o, I no fit find any delivery for that waybill number. Abeg, help me confirm it.",
   });
 }
 

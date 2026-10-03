@@ -38,7 +38,7 @@ async function answer(request: Request, body: AskBody) {
   const delivery = liveDelivery(waybillId);
   const localAnswer = delivery
     ? spokenStatus(delivery)
-    : "I could not find a delivery for that waybill number. Please check and try again.";
+    : "Ah, sorry o, I no fit find any delivery for that waybill number. Abeg, check am again and try one more time.";
 
   const cfg = bimpeConfig();
   if (cfg.enabled) {
@@ -46,7 +46,7 @@ async function answer(request: Request, body: AskBody) {
     // Ground the agent with live tracking data so it answers correctly even
     // if its track_delivery tool isn't registered (or the tool call is slow).
     const prompt = delivery
-      ? `${query}\n\n[Live tracking data for waybill ${waybillId}: ${localAnswer} Answer the customer in one or two short, friendly sentences using only this data.]`
+      ? `${query}\n\n[Live tracking data for waybill ${waybillId}: ${localAnswer} Answer the customer in one or two short, warm sentences in natural Nigerian English, using only this data.]`
       : query;
     try {
       const reply = await askAgent(sessionId, prompt, new URL(request.url).origin);

@@ -57,17 +57,17 @@ export function liveDelivery(waybillId: string): LiveDelivery | undefined {
 /** The sentence the voice agent reads back to the customer. */
 export function spokenStatus(d: LiveDelivery): string {
   if (d.offline) {
-    return `Rider ${d.riderName}'s network is currently unstable. The last known location was ${d.currentLocation}${
+    return `Ah, sorry o. ${d.riderName}'s network don dey misbehave small. The last place we saw him was ${d.currentLocation}${
       d.lastSeenAt ? ` at ${d.lastSeenAt}` : ""
-    }. I'll keep watching and update you as soon as the signal returns.`;
+    }. Don't worry at all, I'll update you as soon as he's back online.`;
   }
   if (d.status === "delayed") {
-    return `Rider ${d.riderName} is at ${d.currentLocation} but is stuck in heavy traffic. The new arrival time is about ${d.etaMinutes} minutes.`;
+    return `Ehen, ${d.riderName} is at ${d.currentLocation}, but the go-slow is serious today o. He should reach you in about ${d.etaMinutes} minutes. Abeg bear with us.`;
   }
   if (d.status === "arriving" && d.etaMinutes <= 2) {
-    return `Good news! Rider ${d.riderName} is just ${d.etaMinutes} minutes away, at ${d.currentLocation}. Please get ready to receive your package.`;
+    return `Oya, get ready! ${d.riderName} is just ${d.etaMinutes} minutes away, at ${d.currentLocation}. He go reach you sharp sharp.`;
   }
-  return `Rider ${d.riderName} is currently at ${d.currentLocation}, arriving in ${d.etaMinutes} minutes.`;
+  return `Ehen, ${d.riderName} is at ${d.currentLocation} now. He go reach you in about ${d.etaMinutes} minutes, no wahala.`;
 }
 
 // Phone number -> waybill the customer asked about when they started a call,

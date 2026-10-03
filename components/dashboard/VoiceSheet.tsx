@@ -54,14 +54,22 @@ function speak(text: string) {
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "en-NG";
-    u.rate = 1.02;
+    // Prefer a Nigerian English voice, then other West African / British English.
+    const voices = synth.getVoices();
+    const voice =
+      voices.find((v) => v.lang.toLowerCase() === "en-ng") ??
+      voices.find((v) => /nigeria/i.test(v.name)) ??
+      voices.find((v) => v.lang.toLowerCase() === "en-gh") ??
+      voices.find((v) => v.lang.toLowerCase() === "en-gb");
+    if (voice) u.voice = voice;
+    u.rate = 0.98;
     synth.speak(u);
   } catch {
     /* no TTS available */
   }
 }
 
-const SUGGESTIONS = ["Where is my rider for LG-90210?", "How far is waybill AB-11873?", "Track LG 44021"];
+const SUGGESTIONS = ["Where is my rider for LG-90210?", "Abeg, where my rider dey? LG-90210", "How far is waybill AB-11873?", "Track LG 44021"];
 
 export default function VoiceSheet() {
   const open = useApp((s) => s.voiceOpen);
