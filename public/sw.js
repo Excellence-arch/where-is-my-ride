@@ -1,7 +1,7 @@
 // WhereIsMyRider service worker: cache the app shell so the demo survives
 // flaky venue Wi-Fi. API calls always go to the network.
-const CACHE = "wimr-v2";
-const SHELL = ["/", "/rider", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon.svg"];
+const CACHE = "wimr-v3";
+const SHELL = ["/", "/app", "/rider", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

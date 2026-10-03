@@ -4,6 +4,10 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html,
 body {
   background: #f8fafc;

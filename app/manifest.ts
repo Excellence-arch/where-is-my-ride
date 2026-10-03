@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "WhereIsMyRider",
     short_name: "MyRider",
     description: "Live rider tracking with a BimpeAI voice assistant.",
-    start_url: "/",
+    start_url: "/app",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

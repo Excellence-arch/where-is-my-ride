@@ -14,7 +14,7 @@ export default function DeliveryCard({ waybillId }: { waybillId: string }) {
 
   const share = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const url = `${window.location.origin}/?track=${d.waybillId}`;
+    const url = `${window.location.origin}/app?track=${d.waybillId}`;
     const text = `Track rider ${d.riderName} for waybill ${d.waybillId}`;
     try {
       if (navigator.share) await navigator.share({ title: "WhereIsMyRider", text, url });

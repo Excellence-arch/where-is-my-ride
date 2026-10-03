@@ -14,7 +14,7 @@ npm run dev          # http://localhost:3000
 npm run build && npm start   # production + service worker
 ```
 
-Sign in with any phone number and any 4-digit code.
+Routes: `/` is the landing page, `/app` the customer app (sign in with any phone number and any 4-digit code), and `/rider` the rider app.
 
 ## Screens and components
 

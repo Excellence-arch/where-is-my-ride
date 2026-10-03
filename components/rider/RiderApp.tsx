@@ -191,7 +191,7 @@ function RiderAuth({ initialPhone, onReady }: { initialPhone: string; onReady: (
 
   return (
     <div className="flex min-h-dvh flex-col px-6 pb-10 pt-14">
-      <a href="/" className="flex w-fit items-center gap-1.5 text-sm font-medium text-slate-500">
+      <a href="/app" className="flex w-fit items-center gap-1.5 text-sm font-medium text-slate-500">
         <ArrowLeft className="h-4 w-4" /> Customer app
       </a>
       <div className="mt-8 flex items-center gap-3">
