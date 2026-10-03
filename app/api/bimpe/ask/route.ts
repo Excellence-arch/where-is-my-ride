@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     // Give the agent the waybill context explicitly so it can call its tool.
     const prompt = /[A-Z]{2}-\d{5}/.test(heard) ? query : `${query} (waybill ${waybillId})`;
     try {
-      const reply = await askAgent(sessionId, prompt);
+      const reply = await askAgent(sessionId, prompt, new URL(request.url).origin);
       if (reply) {
         return NextResponse.json({ answer: reply, source: "bimpeai", waybillId, delivery });
       }

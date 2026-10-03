@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bimpeConfig, makeCall } from "@/lib/bimpe";
+import { bimpeConfig, makeCall, resolveAgentId } from "@/lib/bimpe";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await makeCall(cfg.agentId!, destination, Boolean(body.test));
+    const agentId = await resolveAgentId(new URL(request.url).origin);
+    // Test calls by default: no phone number is linked to the agent yet.
+    const result = await makeCall(agentId, destination, body.test ?? true);
     return NextResponse.json({ ...result, destination });
   } catch (err) {
     return NextResponse.json({ status: "failed", destination, detail: (err as Error).message }, { status: 502 });

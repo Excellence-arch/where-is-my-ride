@@ -14,7 +14,8 @@ export function bimpeConfig() {
   const apiKey = process.env.BIMPEAI_API_KEY;
   const agentId = process.env.BIMPEAI_AGENT_ID;
   const baseUrl = (process.env.BIMPEAI_BASE_URL || "https://api.bimpe.ai").replace(/\/$/, "");
-  return { apiKey, agentId, baseUrl, enabled: Boolean(apiKey && agentId) };
+  // The agent id is optional: resolveAgentId() discovers or provisions one.
+  return { apiKey, agentId, baseUrl, enabled: Boolean(apiKey) };
 }
 
 async function request<T>(method: string, path: string, body?: unknown, timeoutMs = 8000): Promise<T> {
@@ -40,6 +41,72 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
   return ((json as { data?: T }).data ?? json) as T;
 }
 
+const SYSTEM_PROMPT = `You are the WhereIsMyRider delivery assistant for Nigerian e-commerce customers.
+When a customer asks where their rider, order or package is, ask for their waybill number if they have not given it,
+then call the track_delivery tool with it and read back the tool's "message" field naturally and briefly.
+Waybills look like LG-90210 (two letters, five digits). Be warm, concise and reassuring.`;
+
+/** Read-only: agents visible to the configured key (id + name only). */
+export async function listAgents() {
+  const agents = await request<{ id: string; name: string }[]>("GET", "/agents?limit=50", undefined, 6000);
+  return (Array.isArray(agents) ? agents : []).map(({ id, name }) => ({ id, name }));
+}
+
+let cachedAgentId: string | undefined;
+
+/**
+ * BimpeAI calls and conversations are agent-scoped. Use BIMPEAI_AGENT_ID when
+ * set; otherwise reuse the first agent on the account; otherwise create a
+ * "WhereIsMyRider Assistant" agent (with the track_delivery tool) once.
+ */
+export async function resolveAgentId(appOrigin?: string): Promise<string> {
+  const { agentId } = bimpeConfig();
+  if (agentId) return agentId;
+  if (cachedAgentId) return cachedAgentId;
+
+  const agents = await request<{ id: string; name: string }[]>("GET", "/agents?limit=50");
+  const list = Array.isArray(agents) ? agents : [];
+  const existing = list.find((a) => /whereismyrider/i.test(a.name)) ?? list[0];
+  if (existing) return (cachedAgentId = existing.id);
+
+  const workflow = await request<{ id: string }>("POST", "/workflows", {
+    name: "WhereIsMyRider Tracking",
+    system_prompt: SYSTEM_PROMPT,
+    description: "Answers 'where is my rider?' using the live tracking webhook.",
+  });
+  const agent = await request<{ id: string }>("POST", "/agents", {
+    workflow_id: workflow.id,
+    name: "WhereIsMyRider Assistant",
+    description: "Voice assistant that tells customers where their delivery rider is.",
+    persona: "friendly",
+    language: "en",
+    timezone: "Africa/Lagos",
+    business_name: "WhereIsMyRider",
+  });
+  cachedAgentId = agent.id;
+  if (appOrigin) await registerTrackTool(agent.id, appOrigin).catch(() => {});
+  return agent.id;
+}
+
+/** Point the agent's custom API tool at this deployment's /api/track. */
+export async function registerTrackTool(agentId: string, appOrigin: string) {
+  const integration = await request<{ id: string }>("POST", `/agents/${agentId}/integrations/custom_api/configure`, {
+    name: "WhereIsMyRider",
+    base_url: appOrigin.replace(/\/$/, ""),
+  });
+  return request<{ id: string }>("POST", `/agents/${agentId}/integrations/custom_api/${integration.id}/tools`, {
+    name: "track_delivery",
+    http_method: "POST",
+    url_template: "/api/track",
+    description:
+      "Look up the live location and ETA of a delivery rider by waybill number. Read the returned `message` field back to the customer.",
+    body_params: [
+      { name: "waybill_id", type: "string", description: "Waybill number as heard, e.g. LG-90210.", required: true },
+    ],
+    timeout: 2,
+  });
+}
+
 export interface BimpeMessage {
   id: string;
   role: string;
@@ -59,7 +126,7 @@ export interface MakeCallResult {
 }
 
 /** Outbound phone call from the BimpeAI agent to the customer. */
-export function makeCall(agentId: string, destination: string, isTestCall = false) {
+export function makeCall(agentId: string, destination: string, isTestCall = true) {
   return request<MakeCallResult>("POST", `/agents/${agentId}/calls`, {
     destination,
     is_test_call: isTestCall,
@@ -90,9 +157,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * Ask the agent a question and wait (bounded) for its reply.
  * Returns null on timeout so callers can fall back to the local answer.
  */
-export async function askAgent(sessionId: string, question: string, budgetMs = 9000): Promise<string | null> {
-  const { agentId } = bimpeConfig();
-  if (!agentId) throw new BimpeError("BIMPEAI_AGENT_ID is not set");
+export async function askAgent(
+  sessionId: string,
+  question: string,
+  appOrigin?: string,
+  budgetMs = 9000,
+): Promise<string | null> {
+  const agentId = await resolveAgentId(appOrigin);
   const sent = await sendMessage(agentId, sessionId, question);
   const sentAt = Date.parse(sent.created_at) || Date.now() - 1000;
   const deadline = Date.now() + budgetMs;

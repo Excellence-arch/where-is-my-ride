@@ -53,7 +53,7 @@ The voice sheet uses the browser's Web Speech API for speech-to-text and `speech
 
 ### Connect your agent
 
-1. Copy `.env.example` to `.env.local` and set `BIMPEAI_API_KEY` (`sk_…`) and `BIMPEAI_AGENT_ID`.
+1. Copy `.env.example` to `.env.local` and set `BIMPEAI_API_KEY` (`sk_…`). `BIMPEAI_AGENT_ID` is optional: without it the app reuses your first agent, or creates a "WhereIsMyRider Assistant" agent (and registers its `track_delivery` tool) on first use. Calls are placed with `is_test_call: true`. Check the connection at `GET /api/bimpe/status`.
 2. Deploy, for example to Vercel, and add the same env vars there.
 3. Register the webhook as a tool on the agent:
    ```bash
