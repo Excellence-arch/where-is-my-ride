@@ -48,15 +48,40 @@ function lookup(rawId: unknown, rawPhone?: unknown) {
   });
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    // Accept the documented fields plus the shapes agents commonly send.
-    const args = body?.args ?? body?.parameters ?? body?.arguments ?? body;
-    return lookup(args?.waybill_id ?? args?.waybillId, args?.phone_number ?? args?.phoneNumber);
-  } catch {
-    return NextResponse.json({ success: false, message: "Invalid request payload." }, { status: 400 });
+/** Parse whatever the agent sends: JSON, form-encoded, or nothing (query string only). */
+async function readArgs(request: Request): Promise<Record<string, unknown>> {
+  const raw = await request.text();
+  const query = Object.fromEntries(new URL(request.url).searchParams);
+  // Logged (truncated) so tool-call shapes are visible in Vercel runtime logs.
+  console.log("[track] content-type=%s body=%s query=%j", request.headers.get("content-type"), raw.slice(0, 500), query);
+  let body: unknown = {};
+  if (raw.trim()) {
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      body = Object.fromEntries(new URLSearchParams(raw));
+    }
   }
+  const b = (body ?? {}) as Record<string, unknown>;
+  const nested = (b.args ?? b.parameters ?? b.arguments ?? b.input ?? b.body) as unknown;
+  const inner = typeof nested === "string" ? safeJson(nested) : (nested as Record<string, unknown> | undefined);
+  return { ...query, ...b, ...(inner ?? {}) };
+}
+
+function safeJson(s: string): Record<string, unknown> | undefined {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function POST(request: Request) {
+  const args = await readArgs(request);
+  return lookup(
+    args.waybill_id ?? args.waybillId ?? args.waybill,
+    args.phone_number ?? args.phoneNumber ?? args.phone,
+  );
 }
 
 // GET /api/track?waybill_id=LG-90210 (or ?phone_number=...) — curl tests and GET-style tools.
