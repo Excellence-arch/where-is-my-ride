@@ -260,6 +260,33 @@ async function ensureTrackTool(agentId: string, baseUrl: string, notes: string[]
   return true;
 }
 
+export interface AgentTestCode {
+  code: string;
+  channels: {
+    whatsapp?: { is_enabled: boolean; start_message: string; phone_number?: string | null; url?: string | null };
+    instagram?: { is_enabled: boolean; start_message: string; username?: string | null; url?: string | null };
+    messenger?: { is_enabled: boolean; start_message: string; url?: string | null };
+    telephony?: { is_enabled: boolean };
+  };
+}
+
+/** Test code + per-channel deep links (e.g. a wa.me link that starts a WhatsApp chat with the agent). */
+export async function getTestCode(appOrigin?: string) {
+  const agentId = await resolveAgentId(appOrigin);
+  return request<AgentTestCode>("GET", `/agents/${agentId}/deployment/agent-test-code`, undefined, 6000);
+}
+
+/** Read-only: the agent's connected channels. */
+export async function listChannels(appOrigin?: string) {
+  const agentId = await resolveAgentId(appOrigin);
+  return request<{ id: string; type: string; name: string; status: string; is_connected: boolean }[]>(
+    "GET",
+    `/agents/${agentId}/channels`,
+    undefined,
+    6000,
+  );
+}
+
 export interface CallDetail {
   id: string;
   status: "queued" | "ringing" | "answered" | "ended" | "busy" | "failed" | "cancelled";
