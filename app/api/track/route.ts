@@ -65,7 +65,12 @@ async function readArgs(request: Request): Promise<Record<string, unknown>> {
   const b = (body ?? {}) as Record<string, unknown>;
   const nested = (b.args ?? b.parameters ?? b.arguments ?? b.input ?? b.body) as unknown;
   const inner = typeof nested === "string" ? safeJson(nested) : (nested as Record<string, unknown> | undefined);
-  return { ...query, ...b, ...(inner ?? {}) };
+  const merged: Record<string, unknown> = { ...query, ...b, ...(inner ?? {}) };
+  // Drop unfilled template placeholders such as "{{phone_number}}".
+  for (const [k, v] of Object.entries(merged)) {
+    if (typeof v === "string" && /^\s*\{+\s*\w+\s*\}+\s*$/.test(v)) delete merged[k];
+  }
+  return merged;
 }
 
 function safeJson(s: string): Record<string, unknown> | undefined {

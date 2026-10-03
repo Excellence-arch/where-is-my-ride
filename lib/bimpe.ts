@@ -45,6 +45,8 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
 
 const AGENT_NAME = "WhereIsMyRider Assistant";
 const INTEGRATION_NAME = "WhereIsMyRider";
+// Bump when the tool definition changes; setup replaces older versions.
+const TOOL_VERSION = "[wimr-tool v2]";
 
 const SYSTEM_PROMPT = `You are the WhereIsMyRider voice assistant, a friendly Nigerian delivery-support agent.
 You answer customers' questions about their order and delivery on phone calls and chat.
@@ -182,12 +184,16 @@ async function ensureTrackTool(agentId: string, baseUrl: string, notes: string[]
   );
 
   if (integration) {
-    const tools = await request<{ id: string; name: string; action_name?: string }[]>(
+    const tools = await request<{ id: string; name: string; action_name?: string; description?: string | null }[]>(
       "GET",
       `/agents/${agentId}/integrations/custom_api/${integration.id}/tools`,
     );
-    if ((Array.isArray(tools) ? tools : []).some((t) => /track_delivery/i.test(`${t.name} ${t.action_name ?? ""}`))) {
-      return true;
+    for (const t of Array.isArray(tools) ? tools : []) {
+      if (!/track_delivery/i.test(`${t.name} ${t.action_name ?? ""}`)) continue;
+      if ((t.description ?? "").includes(TOOL_VERSION)) return true;
+      // Outdated definition: remove it so the agent only sees the current one.
+      await request("DELETE", `/agents/${agentId}/integrations/custom_api/${integration.id}/tools/${t.id}`);
+      notes.push(`Removed outdated track_delivery tool ${t.id}`);
     }
   } else {
     integration = await request<CustomApiIntegration>("POST", `/agents/${agentId}/integrations/custom_api/configure`, {
@@ -204,7 +210,8 @@ async function ensureTrackTool(agentId: string, baseUrl: string, notes: string[]
     url_template: "/api/track",
     description:
       "Look up a customer's order: rider location, ETA, items, prices, total, payment, merchant and delivery address. " +
-      "Call it whenever the customer asks anything about their order or rider. Pass waybill_id if known, otherwise phone_number.",
+      "Call it whenever the customer asks anything about their order or rider. Pass waybill_id if known, otherwise phone_number. " +
+      TOOL_VERSION,
     body_params: [
       {
         name: "waybill_id",
@@ -219,6 +226,9 @@ async function ensureTrackTool(agentId: string, baseUrl: string, notes: string[]
         required: false,
       },
     ],
+    // body_params alone arrived as an empty body; map the arguments explicitly.
+    headers_template: { "Content-Type": "application/json" },
+    body_template: { waybill_id: "{{waybill_id}}", phone_number: "{{phone_number}}" },
     category: "logistics",
     require_human_approval: false,
     timeout: 5000, // milliseconds
