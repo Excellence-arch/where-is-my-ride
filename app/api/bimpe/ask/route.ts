@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { askAgent, bimpeConfig } from "@/lib/bimpe";
-import { normalizeWaybill, PRIMARY_WAYBILL } from "@/lib/deliveries";
+import { normalizeWaybill, orderSummary, PRIMARY_WAYBILL } from "@/lib/deliveries";
 import { liveDelivery, spokenStatus } from "@/lib/demoState";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +46,7 @@ async function answer(request: Request, body: AskBody) {
     // Ground the agent with live tracking data so it answers correctly even
     // if its track_delivery tool isn't registered (or the tool call is slow).
     const prompt = delivery
-      ? `${query}\n\n[Live tracking data for waybill ${waybillId}: ${localAnswer} Answer the customer in one or two short, warm sentences in natural Nigerian English, using only this data.]`
+      ? `${query}\n\n[Live data for waybill ${waybillId}. Status: ${localAnswer} Order: ${orderSummary(delivery)} Answer every part of the customer's question in two or three short, warm sentences of natural Nigerian English, using only this data.]`
       : query;
     try {
       const reply = await askAgent(sessionId, prompt, new URL(request.url).origin);
