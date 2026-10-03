@@ -68,15 +68,13 @@ export default function VoiceSheet() {
   const setOpen = useApp((s) => s.setVoiceOpen);
   const openTracker = useApp((s) => s.openTracker);
   const addAudit = useApp((s) => s.addAudit);
-  const phone = useApp((s) => s.phone);
+  const openCall = useApp((s) => s.openCall);
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [transcript, setTranscript] = useState("");
   const [answer, setAnswer] = useState<Answer | null>(null);
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState("");
-  const [callState, setCallState] = useState<"idle" | "calling" | "done" | "failed">("idle");
-  const [callNote, setCallNote] = useState("");
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const transcriptRef = useRef("");
 
@@ -116,7 +114,6 @@ export default function VoiceSheet() {
   const startListening = useCallback(() => {
     const rec = getRecognition();
     setAnswer(null);
-    setCallState("idle");
     transcriptRef.current = "";
     setTranscript("");
     if (!rec) {
@@ -167,32 +164,10 @@ export default function VoiceSheet() {
       setDraft("");
       setAnswer(null);
       setTranscript("");
-      setCallState("idle");
     }
   }, [open, startListening]);
 
-  const callMe = async () => {
-    setCallState("calling");
-    try {
-      const res = await fetch("/api/bimpe/call", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone || "+2348035550142" }),
-      });
-      const json = await res.json();
-      if (json.status === "initiated" || json.status === "simulated") {
-        setCallState("done");
-        setCallNote(json.status === "simulated" ? "Demo mode: call simulated" : `Calling ${json.destination}…`);
-        addAudit(`BimpeAI placed an update call to ${json.destination}`, "call");
-      } else {
-        setCallState("failed");
-        setCallNote(json.detail || "Line busy, try again");
-      }
-    } catch {
-      setCallState("failed");
-      setCallNote("Network error");
-    }
-  };
+  const callMe = () => openCall(answer?.waybillId || PRIMARY_WAYBILL);
 
   return (
     <AnimatePresence>
@@ -310,14 +285,11 @@ export default function VoiceSheet() {
                       </button>
                       <button
                         onClick={callMe}
-                        disabled={callState === "calling" || callState === "done"}
-                        className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-900 disabled:text-slate-400"
+                        className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-900"
                       >
-                        {callState === "calling" ? <Loader2 className="h-4 w-4 animate-spin" /> : <PhoneCall className="h-4 w-4" />}
-                        {callState === "done" ? "Call placed" : "Call me"}
+                        <PhoneCall className="h-4 w-4" /> Call me
                       </button>
                     </div>
-                    {callNote && callState !== "idle" && <p className="mt-2 text-center text-xs text-slate-500">{callNote}</p>}
                   </motion.div>
                 )}
               </AnimatePresence>

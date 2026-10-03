@@ -46,7 +46,9 @@ Each override is mirrored to the server (`POST /api/demo-state`), so **the Bimpe
 | --- | --- |
 | `POST /api/track` | **Voice-agent webhook.** Takes `{ "waybill_id": "lg 90210" }` and returns `{ success, data, message }`. In-memory lookup, about 5 ms. Normalises speech transcriptions such as `"L G nine oh two one oh"` and `"LG dash 90210"`. Also accepts `GET ?waybill_id=` |
 | `POST /api/bimpe/ask` | Used by the in-app voice sheet. Forwards the transcribed question to your BimpeAI agent (Agent Console API, webchat test channel) and waits up to about 9 s for the reply. Falls back to a local answer if BimpeAI isn't configured or doesn't respond |
-| `POST /api/bimpe/call` | The "Call me" button. Asks the BimpeAI agent to place an outbound phone call (`POST /agents/{id}/calls`) |
+| `POST /api/bimpe/call` | **Get a call from BimpeAI.** Takes `{ phone, waybillId }`. The BimpeAI agent rings that number (`is_test_call: true`) and answers questions about the order on the call, looking it up through `track_delivery` (`/api/track`) |
+| `GET /api/bimpe/call/:id` | Call status (`queued → ringing → answered → ended`) and transcript, polled by the call sheet |
+| `GET /api/bimpe/setup` | Sets up the agent; safe to call more than once. Reuses an agent named "WhereIsMyRider…" or creates a "WhereIsMyRider Assistant" agent for order support, then registers the `track_delivery` tool against the production URL |
 | `GET/POST /api/demo-state` | God Mode sync |
 
 The voice sheet uses the browser's Web Speech API for speech-to-text and `speechSynthesis` to read the answer aloud. If speech isn't available, it falls back to typed input and quick prompts.

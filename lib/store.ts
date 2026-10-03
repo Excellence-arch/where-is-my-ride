@@ -24,6 +24,7 @@ interface AppState {
   phone: string;
   selectedWaybill: string;
   voiceOpen: boolean;
+  callOpen: boolean;
   godModeUnlocked: boolean;
   godModeOpen: boolean;
   flags: DemoFlags;
@@ -36,6 +37,9 @@ interface AppState {
   go: (screen: Screen) => void;
   openTracker: (waybillId: string) => void;
   setVoiceOpen: (open: boolean) => void;
+  /** Open the "BimpeAI calls me" sheet, optionally for a specific waybill. */
+  openCall: (waybillId?: string) => void;
+  closeCall: () => void;
   unlockGodMode: () => void;
   setGodModeOpen: (open: boolean) => void;
   toggleNetworkDrop: () => void;
@@ -90,6 +94,7 @@ export const useApp = create<AppState>((set, get) => ({
   phone: "",
   selectedWaybill: PRIMARY_WAYBILL,
   voiceOpen: false,
+  callOpen: false,
   godModeUnlocked: false,
   godModeOpen: false,
   flags: { ...DEFAULT_FLAGS },
@@ -102,11 +107,14 @@ export const useApp = create<AppState>((set, get) => ({
   },
   logout: () => {
     persistSession(null);
-    set({ phone: "", screen: "auth", voiceOpen: false });
+    set({ phone: "", screen: "auth", voiceOpen: false, callOpen: false });
   },
   go: (screen) => set({ screen }),
   openTracker: (waybillId) => set({ selectedWaybill: waybillId, screen: "map" }),
   setVoiceOpen: (voiceOpen) => set({ voiceOpen }),
+  openCall: (waybillId) =>
+    set((s) => ({ callOpen: true, voiceOpen: false, selectedWaybill: waybillId ?? s.selectedWaybill })),
+  closeCall: () => set({ callOpen: false }),
   unlockGodMode: () => set({ godModeUnlocked: true, godModeOpen: true }),
   setGodModeOpen: (godModeOpen) => set({ godModeOpen }),
 

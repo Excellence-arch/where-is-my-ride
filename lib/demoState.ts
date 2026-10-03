@@ -69,3 +69,16 @@ export function spokenStatus(d: LiveDelivery): string {
   }
   return `Rider ${d.riderName} is currently at ${d.currentLocation}, arriving in ${d.etaMinutes} minutes.`;
 }
+
+// Phone number -> waybill the customer asked about when they started a call,
+// so the agent's tool can resolve "my order" from the caller's number.
+const callContext = new Map<string, string>();
+const phoneKey = (p: string) => p.replace(/\D/g, "").slice(-10);
+
+export function setCallContext(phone: string, waybillId: string) {
+  callContext.set(phoneKey(phone), waybillId);
+}
+
+export function waybillForPhone(phone: string): string | undefined {
+  return callContext.get(phoneKey(phone));
+}

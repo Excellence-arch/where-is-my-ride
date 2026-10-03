@@ -6,6 +6,7 @@ import SplashToAuth from "@/components/auth/SplashToAuth";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import LiveMapScreen from "@/components/map/LiveMapScreen";
 import VoiceSheet from "@/components/dashboard/VoiceSheet";
+import CallSheet from "@/components/call/CallSheet";
 import GodModePanel from "@/components/godmode/GodModePanel";
 import ProximityToast from "@/components/ui/ProximityToast";
 import BottomNav from "@/components/ui/BottomNav";
@@ -61,6 +62,7 @@ export default function Home() {
 
       {screen !== "auth" && <BottomNav />}
       <VoiceSheet />
+      <CallSheet />
       <GodModePanel />
       <ProximityToast />
     </main>

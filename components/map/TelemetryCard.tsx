@@ -1,12 +1,13 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Mic, Navigation, WifiOff } from "lucide-react";
+import { Mic, Navigation, PhoneCall, WifiOff } from "lucide-react";
 import type { LiveDelivery } from "@/lib/demoState";
 import { useApp } from "@/lib/store";
 
 export default function TelemetryCard({ delivery }: { delivery: LiveDelivery }) {
   const setVoiceOpen = useApp((s) => s.setVoiceOpen);
+  const openCall = useApp((s) => s.openCall);
   const etaTone =
     delivery.status === "delayed" ? "text-amber-600" : delivery.status === "arriving" ? "text-blue-600" : "text-slate-900";
 
@@ -52,12 +53,20 @@ export default function TelemetryCard({ delivery }: { delivery: LiveDelivery }) 
           </div>
         </div>
 
-        <button
-          onClick={() => setVoiceOpen(true)}
-          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-sm font-semibold text-white"
-        >
-          <Mic className="h-4 w-4" /> Ask BimpeAI about this delivery
-        </button>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            onClick={() => setVoiceOpen(true)}
+            className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 text-sm font-semibold text-white"
+          >
+            <Mic className="h-4 w-4" /> Ask BimpeAI
+          </button>
+          <button
+            onClick={() => openCall(delivery.waybillId)}
+            className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-900"
+          >
+            <PhoneCall className="h-4 w-4" /> Call me
+          </button>
+        </div>
       </div>
     </div>
   );
