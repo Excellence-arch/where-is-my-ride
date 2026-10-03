@@ -175,6 +175,29 @@ interface CustomApiIntegration {
   config?: { name?: string; base_url?: string | null };
 }
 
+/** Read-only: track tools registered on the agent (for the setup report). */
+export async function listTrackTools(agentId: string) {
+  const integrations = await request<CustomApiIntegration[]>("GET", `/agents/${agentId}/integrations/custom_api`);
+  const out: { integrationId: string; baseUrl?: string | null; toolId: string; name: string; current: boolean }[] = [];
+  for (const i of Array.isArray(integrations) ? integrations : []) {
+    if (i.config?.name !== INTEGRATION_NAME) continue;
+    const tools = await request<{ id: string; name: string; description?: string | null }[]>(
+      "GET",
+      `/agents/${agentId}/integrations/custom_api/${i.id}/tools`,
+    );
+    for (const t of Array.isArray(tools) ? tools : []) {
+      out.push({
+        integrationId: i.id,
+        baseUrl: i.config?.base_url,
+        toolId: t.id,
+        name: t.name,
+        current: (t.description ?? "").includes(TOOL_VERSION),
+      });
+    }
+  }
+  return out;
+}
+
 /** Register (once) the custom API integration + track_delivery tool on the agent. */
 async function ensureTrackTool(agentId: string, baseUrl: string, notes: string[]) {
   const existing = await request<CustomApiIntegration[]>("GET", `/agents/${agentId}/integrations/custom_api`);
