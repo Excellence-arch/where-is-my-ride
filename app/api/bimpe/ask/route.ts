@@ -31,8 +31,11 @@ export async function POST(request: Request) {
   const cfg = bimpeConfig();
   if (cfg.enabled) {
     const sessionId = (body.sessionId || "wimr-anon").replace(/[^\w-]/g, "").slice(0, 64);
-    // Give the agent the waybill context explicitly so it can call its tool.
-    const prompt = /[A-Z]{2}-\d{5}/.test(heard) ? query : `${query} (waybill ${waybillId})`;
+    // Ground the agent with live tracking data so it answers correctly even
+    // if its track_delivery tool isn't registered (or the tool call is slow).
+    const prompt = delivery
+      ? `${query}\n\n[Live tracking data for waybill ${waybillId}: ${localAnswer} Answer the customer in one or two short, friendly sentences using only this data.]`
+      : query;
     try {
       const reply = await askAgent(sessionId, prompt, new URL(request.url).origin);
       if (reply) {
