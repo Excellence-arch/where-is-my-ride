@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { bimpeConfig, ensureAgent, makeCall } from "@/lib/bimpe";
 import { PRIMARY_WAYBILL } from "@/lib/deliveries";
-import { liveDelivery, setCallContext } from "@/lib/demoState";
+import { activeDeliveries } from "@/lib/deliveries";
+import { setCallContext } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -31,9 +32,9 @@ export async function POST(request: Request) {
   if (destination.replace(/\D/g, "").length < 11) {
     return NextResponse.json({ status: "failed", detail: "Enter a valid phone number." }, { status: 400 });
   }
-  const waybillId = liveDelivery(body.waybillId ?? "") ? body.waybillId! : PRIMARY_WAYBILL;
+  const waybillId = body.waybillId && activeDeliveries[body.waybillId] ? body.waybillId : PRIMARY_WAYBILL;
   // Lets the agent's tool resolve "my order" from the number it is calling.
-  setCallContext(destination, waybillId);
+  await setCallContext(destination, waybillId);
 
   if (!bimpeConfig().enabled) {
     return NextResponse.json({

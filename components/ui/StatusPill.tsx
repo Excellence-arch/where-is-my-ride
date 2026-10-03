@@ -5,6 +5,7 @@ const STYLES: Record<DeliveryStatus, { label: string; className: string; dot: st
   arriving: { label: "Arriving", className: "bg-blue-100 text-blue-800", dot: "bg-blue-600" },
   delayed: { label: "Traffic delay", className: "bg-amber-100 text-amber-800", dot: "bg-amber-600" },
   offline: { label: "Signal lost", className: "bg-slate-800 text-white", dot: "bg-white" },
+  delivered: { label: "Delivered", className: "bg-slate-100 text-slate-700", dot: "bg-slate-500" },
 };
 
 export default function StatusPill({ status }: { status: DeliveryStatus }) {

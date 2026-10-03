@@ -1,7 +1,7 @@
 // Hardcoded delivery data shared by the UI and the BimpeAI webhook.
 // No database on purpose: demo reliability beats realism.
 
-export type DeliveryStatus = "in_transit" | "delayed" | "arriving" | "offline";
+export type DeliveryStatus = "in_transit" | "delayed" | "arriving" | "offline" | "delivered";
 
 export interface OrderItem {
   name: string;
@@ -25,6 +25,12 @@ export interface Delivery {
   vehicle: string;
   currentLocation: string;
   destination: string;
+  /** Drop-off coordinates. */
+  destLat: number;
+  destLng: number;
+  /** Where the rider is in the static (no-GPS) demo. */
+  startLat: number;
+  startLng: number;
   etaMinutes: number;
   status: DeliveryStatus;
 }
@@ -50,6 +56,10 @@ export const activeDeliveries: Record<string, Delivery> = {
     vehicle: "Bajaj Boxer · KJA-482QB",
     currentLocation: "Ikeja Underbridge",
     destination: "Allen Avenue, Ikeja",
+    destLat: 6.6018,
+    destLng: 3.3515,
+    startLat: 6.5793,
+    startLng: 3.3658,
     etaMinutes: 15,
     status: "in_transit",
   },
@@ -69,6 +79,10 @@ export const activeDeliveries: Record<string, Delivery> = {
     vehicle: "TVS Apache · LND-210XA",
     currentLocation: "Lekki Toll Gate",
     destination: "Admiralty Way, Lekki Phase 1",
+    destLat: 6.4474,
+    destLng: 3.4723,
+    startLat: 6.4386,
+    startLng: 3.4519,
     etaMinutes: 28,
     status: "in_transit",
   },
@@ -91,6 +105,10 @@ export const activeDeliveries: Record<string, Delivery> = {
     vehicle: "Honda CG125 · ABJ-771KD",
     currentLocation: "Wuse Market",
     destination: "Maitama District, Abuja",
+    destLat: 9.0882,
+    destLng: 7.4934,
+    startLat: 9.0643,
+    startLng: 7.4728,
     etaMinutes: 9,
     status: "arriving",
   },

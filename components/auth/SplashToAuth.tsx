@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, MapPin, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bike, MapPin, ShieldCheck } from "lucide-react";
 import { useApp } from "@/lib/store";
 
 type Step = "phone" | "otp";
@@ -160,6 +160,12 @@ export default function SplashToAuth() {
         </AnimatePresence>
       </div>
 
+      <a
+        href="/rider"
+        className="mb-4 flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700"
+      >
+        <Bike className="h-4 w-4" /> I&apos;m a rider
+      </a>
       <p className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
         <ShieldCheck className="h-4 w-4" /> Voice assistant powered by BimpeAI
       </p>

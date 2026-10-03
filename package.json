@@ -10,7 +10,9 @@
     "bimpe:register-tool": "node scripts/register-bimpe-tool.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "framer-motion": "^14.0.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.51.0",
     "next": "^16.3.8",
     "react": "^19.3.0",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { askAgent, bimpeConfig } from "@/lib/bimpe";
-import { normalizeWaybill, orderSummary, PRIMARY_WAYBILL } from "@/lib/deliveries";
-import { liveDelivery, spokenStatus } from "@/lib/demoState";
+import { activeDeliveries, normalizeWaybill, orderSummary, PRIMARY_WAYBILL } from "@/lib/deliveries";
+import { spokenStatus } from "@/lib/demoState";
+import { getLiveDelivery } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +35,11 @@ async function answer(request: Request, body: AskBody) {
   if (!query) return NextResponse.json({ error: "Empty query" }, { status: 400 });
 
   const heard = normalizeWaybill(query);
-  const waybillId = liveDelivery(heard) ? heard : body.waybillId || PRIMARY_WAYBILL;
-  const delivery = liveDelivery(waybillId);
+  const waybillId = activeDeliveries[heard] ? heard : body.waybillId && activeDeliveries[body.waybillId] ? body.waybillId : PRIMARY_WAYBILL;
+  const delivery = await getLiveDelivery(waybillId);
   const localAnswer = delivery
     ? spokenStatus(delivery)
-    : "Ah, sorry o, I no fit find any delivery for that waybill number. Abeg, check am again and try one more time.";
+    : "I'm sorry, I couldn't find a delivery with that waybill number. Please check it and try again.";
 
   const cfg = bimpeConfig();
   if (cfg.enabled) {
@@ -46,7 +47,7 @@ async function answer(request: Request, body: AskBody) {
     // Ground the agent with live tracking data so it answers correctly even
     // if its track_delivery tool isn't registered (or the tool call is slow).
     const prompt = delivery
-      ? `${query}\n\n[Live data for waybill ${waybillId}. Status: ${localAnswer} Order: ${orderSummary(delivery)} Answer every part of the customer's question in two or three short, warm sentences of natural Nigerian English, using only this data.]`
+      ? `${query}\n\n[Live data for waybill ${waybillId}. Status: ${localAnswer} Order: ${orderSummary(delivery)} Answer every part of the customer's question in two or three short, warm, polite sentences of standard English, as a professional Nigerian customer-care agent would. Do not use Pidgin or slang. Use only this data.]`
       : query;
     try {
       const reply = await askAgent(sessionId, prompt, new URL(request.url).origin);

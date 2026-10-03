@@ -53,15 +53,15 @@ function speak(text: string) {
     if (!synth) return;
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-NG";
-    // Prefer a Nigerian English voice, then other West African / British English.
+    // Nigerian-accented English voice when the device has one (e.g. Edge's
+    // "English (Nigeria)" voices, Android en-NG); otherwise plain English.
     const voices = synth.getVoices();
     const voice =
-      voices.find((v) => v.lang.toLowerCase() === "en-ng") ??
+      voices.find((v) => v.lang.toLowerCase().replace("_", "-") === "en-ng") ??
       voices.find((v) => /nigeria/i.test(v.name)) ??
-      voices.find((v) => v.lang.toLowerCase() === "en-gh") ??
-      voices.find((v) => v.lang.toLowerCase() === "en-gb");
+      voices.find((v) => /^en-(gb|us)$/i.test(v.lang.replace("_", "-")));
     if (voice) u.voice = voice;
+    u.lang = voice?.lang ?? "en-GB";
     u.rate = 0.98;
     synth.speak(u);
   } catch {
@@ -69,7 +69,7 @@ function speak(text: string) {
   }
 }
 
-const SUGGESTIONS = ["Where is my rider for LG-90210?", "Abeg, where my rider dey? LG-90210", "How far is waybill AB-11873?", "Track LG 44021"];
+const SUGGESTIONS = ["Where is my rider for LG-90210?", "What did I order on LG-90210?", "How far is waybill AB-11873?", "Track LG 44021"];
 
 export default function VoiceSheet() {
   const open = useApp((s) => s.voiceOpen);

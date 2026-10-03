@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { DEFAULT_FLAGS, type DemoFlags } from "./demoState";
+import { DEFAULT_FLAGS, type DemoFlags, type DemoState, type TripSnapshot } from "./demoState";
 import { PRIMARY_WAYBILL } from "./deliveries";
 
 export type Screen = "auth" | "dashboard" | "map";
@@ -31,6 +31,10 @@ interface AppState {
   lastSeenAt?: string;
   audit: AuditEntry[];
   toast: Toast | null;
+  /** Live rider trips from the server, keyed by waybill. */
+  trips: Record<string, TripSnapshot>;
+  /** When God Mode was last changed locally (server sync waits a moment after). */
+  flagsChangedAt: number;
 
   login: (phone: string) => void;
   logout: () => void;
@@ -49,6 +53,8 @@ interface AppState {
   addAudit: (text: string, kind: AuditEntry["kind"]) => void;
   showToast: (title: string, body: string) => void;
   dismissToast: () => void;
+  /** Apply a /api/live poll result. */
+  applyServer: (trips: Record<string, TripSnapshot>, state: DemoState) => void;
 }
 
 export const nowLabel = () =>
@@ -100,6 +106,8 @@ export const useApp = create<AppState>((set, get) => ({
   flags: { ...DEFAULT_FLAGS },
   audit: SEED_AUDIT,
   toast: null,
+  trips: {},
+  flagsChangedAt: 0,
 
   login: (phone) => {
     persistSession(phone);
@@ -122,7 +130,7 @@ export const useApp = create<AppState>((set, get) => ({
     const on = !get().flags.networkDrop;
     const lastSeenAt = on ? nowLabel() : get().lastSeenAt;
     const flags = { ...get().flags, networkDrop: on };
-    set({ flags, lastSeenAt });
+    set({ flags, lastSeenAt, flagsChangedAt: Date.now() });
     syncFlags(flags, lastSeenAt);
     get().addAudit(
       on ? "MTN signal lost on Segun's device — holding last known location" : "Segun back online — live tracking restored",
@@ -132,7 +140,7 @@ export const useApp = create<AppState>((set, get) => ({
   toggleTraffic: () => {
     const on = !get().flags.heavyTraffic;
     const flags = { ...get().flags, heavyTraffic: on };
-    set({ flags });
+    set({ flags, flagsChangedAt: Date.now() });
     syncFlags(flags);
     get().addAudit(
       on ? "AI recalibrated ETA: heavy traffic on Ikorodu Road (+20 mins)" : "Traffic cleared — ETA restored to 15 mins",
@@ -141,18 +149,25 @@ export const useApp = create<AppState>((set, get) => ({
   },
   triggerGeofence: () => {
     const flags = { ...get().flags, geofenceBreached: true };
-    set({ flags });
+    set({ flags, flagsChangedAt: Date.now() });
     syncFlags(flags);
     get().showToast("Rider Approaching", "Segun is 2 minutes away.");
     get().addAudit("Geofence breached — customer auto-notified (2km radius)", "geofence");
   },
   resetDemo: () => {
     const flags = { ...DEFAULT_FLAGS };
-    set({ flags, lastSeenAt: undefined, toast: null });
+    set({ flags, lastSeenAt: undefined, toast: null, flagsChangedAt: Date.now() });
     syncFlags(flags, "");
   },
   addAudit: (text, kind) =>
     set((s) => ({ audit: [{ id: `${Date.now()}-${Math.random()}`, text, time: nowLabel(), kind }, ...s.audit].slice(0, 12) })),
   showToast: (title, body) => set({ toast: { id: Date.now(), title, body } }),
   dismissToast: () => set({ toast: null }),
+  applyServer: (trips, state) =>
+    set((s) =>
+      // Don't let a poll that started before a local toggle undo it.
+      Date.now() - s.flagsChangedAt < 4000
+        ? { trips }
+        : { trips, flags: state.flags, lastSeenAt: state.lastSeenAt },
+    ),
 }));

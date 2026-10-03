@@ -32,9 +32,18 @@ export default function TelemetryCard({ delivery }: { delivery: LiveDelivery }) 
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
               <Navigation className="h-3.5 w-3.5" /> {delivery.offline ? "Last seen at" : "Currently at"}
+              {delivery.live && delivery.status !== "delivered" && (
+                <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] tracking-normal text-emerald-700">
+                  LIVE GPS
+                </span>
+              )}
             </p>
             <p className="mt-1 truncate text-lg font-bold text-slate-900">{delivery.currentLocation}</p>
-            <p className="truncate text-sm text-slate-500">To {delivery.destination}</p>
+            <p className="truncate text-sm text-slate-500">
+              {delivery.distanceKm != null && !delivery.offline ? `${delivery.distanceKm} km · ` : ""}
+              To {delivery.destination}
+              {delivery.demoDest ? " (demo drop-off)" : ""}
+            </p>
           </div>
           <div className="shrink-0 text-right">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">ETA</p>
@@ -47,7 +56,13 @@ export default function TelemetryCard({ delivery }: { delivery: LiveDelivery }) 
                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 className={`text-4xl font-extrabold leading-none tracking-tight ${etaTone}`}
               >
-                {delivery.etaMinutes} <span className="text-xl font-bold">Mins</span>
+                {delivery.status === "delivered" ? (
+                  <span className="text-2xl font-bold">Done</span>
+                ) : (
+                  <>
+                    {delivery.etaMinutes} <span className="text-xl font-bold">Mins</span>
+                  </>
+                )}
               </motion.p>
             </AnimatePresence>
           </div>

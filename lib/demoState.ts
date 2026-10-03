@@ -1,7 +1,9 @@
-import { activeDeliveries, type Delivery } from "./deliveries";
+import type { Delivery } from "./deliveries";
+import { etaMinutes, GEOFENCE_METERS, haversine, STALE_AFTER_MS } from "./geo";
 
-// God Mode flags. The client mirrors these to the server (POST /api/demo-state)
-// so the BimpeAI voice agent tells the same story as the screen.
+// Shared (client + server) logic that turns a static order + the rider's live
+// GPS trip + God Mode flags into what the customer sees and the agent says.
+
 export interface DemoFlags {
   networkDrop: boolean;
   heavyTraffic: boolean;
@@ -14,71 +16,122 @@ export const DEFAULT_FLAGS: DemoFlags = {
   geofenceBreached: false,
 };
 
+export interface DemoState {
+  flags: DemoFlags;
+  /** Time label shown on the "Last Known Location" badge for a forced network drop. */
+  lastSeenAt?: string;
+}
+
 export const TRAFFIC_ETA_MINUTES = 35;
+export const TRAFFIC_DELAY_MINUTES = 20;
 export const GEOFENCE_ETA_MINUTES = 2;
+
+/** A rider's live trip, as stored by the rider app. */
+export interface TripSnapshot {
+  waybillId: string;
+  riderName: string;
+  status: "idle" | "en_route" | "delivered";
+  lat: number | null;
+  lng: number | null;
+  accuracyM: number | null;
+  speedMps: number | null;
+  heading: number | null;
+  landmark: string | null;
+  destLat: number | null;
+  destLng: number | null;
+  demoDest: boolean;
+  simulated: boolean;
+  startedAt: string | null;
+  updatedAt: string;
+  deliveredAt: string | null;
+}
 
 export interface LiveDelivery extends Delivery {
   offline: boolean;
   lastSeenAt?: string;
+  /** True when location/ETA come from the rider's real (or simulated) GPS. */
+  live: boolean;
+  distanceKm?: number;
+  rider?: { lat: number; lng: number; heading: number | null; accuracyM: number | null; updatedAt: string };
+  demoDest?: boolean;
 }
 
-/** Apply God Mode overrides to the hero delivery (LG-90210 / Segun). */
-export function applyFlags(delivery: Delivery, flags: DemoFlags, lastSeenAt?: string): LiveDelivery {
-  if (delivery.waybillId !== "LG-90210") return { ...delivery, offline: false };
-  let live: LiveDelivery = { ...delivery, offline: false };
-  if (flags.heavyTraffic) live = { ...live, etaMinutes: TRAFFIC_ETA_MINUTES, status: "delayed" };
-  if (flags.geofenceBreached) {
-    live = { ...live, etaMinutes: GEOFENCE_ETA_MINUTES, status: "arriving", currentLocation: "Opebi Link Bridge" };
+export const timeLabel = (d: Date) =>
+  d.toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Africa/Lagos" });
+
+/**
+ * Merge order + live trip + God Mode. Flags only apply to the hero order
+ * (LG-90210 / Segun) so the other cards stay calm during the pitch.
+ */
+export function mergeLive(
+  base: Delivery,
+  trip: TripSnapshot | null | undefined,
+  state: DemoState,
+  now = Date.now(),
+): LiveDelivery {
+  let d: LiveDelivery = { ...base, offline: false, live: false };
+
+  if (trip && trip.status === "delivered") {
+    return { ...d, status: "delivered", etaMinutes: 0, live: true, currentLocation: base.destination };
   }
-  if (flags.networkDrop) live = { ...live, offline: true, status: "offline", lastSeenAt };
-  return live;
+
+  if (trip && trip.status === "en_route" && trip.lat != null && trip.lng != null) {
+    const dest = { lat: trip.destLat ?? base.destLat, lng: trip.destLng ?? base.destLng };
+    const dist = haversine({ lat: trip.lat, lng: trip.lng }, dest);
+    const updated = Date.parse(trip.updatedAt);
+    d = {
+      ...d,
+      live: true,
+      demoDest: trip.demoDest,
+      distanceKm: Math.round(dist / 100) / 10,
+      currentLocation: trip.landmark || `${trip.lat.toFixed(4)}, ${trip.lng.toFixed(4)}`,
+      etaMinutes: etaMinutes(dist, trip.speedMps),
+      status: dist <= GEOFENCE_METERS ? "arriving" : "in_transit",
+      rider: { lat: trip.lat, lng: trip.lng, heading: trip.heading, accuracyM: trip.accuracyM, updatedAt: trip.updatedAt },
+    };
+    // Real network drop: the rider's phone stopped reporting.
+    if (now - updated > STALE_AFTER_MS) {
+      d = { ...d, offline: true, status: "offline", lastSeenAt: timeLabel(new Date(updated)) };
+    }
+  }
+
+  if (base.waybillId !== "LG-90210") return d;
+
+  const { flags } = state;
+  if (flags.heavyTraffic) {
+    d = {
+      ...d,
+      etaMinutes: d.live ? d.etaMinutes + TRAFFIC_DELAY_MINUTES : TRAFFIC_ETA_MINUTES,
+      status: d.offline ? d.status : "delayed",
+    };
+  }
+  if (flags.geofenceBreached && !d.live) {
+    d = { ...d, etaMinutes: GEOFENCE_ETA_MINUTES, status: "arriving", currentLocation: "Opebi Link Bridge" };
+  }
+  if (flags.networkDrop) {
+    d = { ...d, offline: true, status: "offline", lastSeenAt: d.lastSeenAt ?? state.lastSeenAt };
+  }
+  return d;
 }
 
-// Server-side, in-memory copy. Good enough for a single demo instance; on
-// multi-instance serverless hosts the voice agent may see defaults.
-const serverState: { flags: DemoFlags; lastSeenAt?: string } = { flags: { ...DEFAULT_FLAGS } };
-
-export function getServerFlags() {
-  return serverState;
-}
-
-export function setServerFlags(flags: Partial<DemoFlags>, lastSeenAt?: string) {
-  serverState.flags = { ...serverState.flags, ...flags };
-  if (lastSeenAt !== undefined) serverState.lastSeenAt = lastSeenAt;
-  return serverState;
-}
-
-export function liveDelivery(waybillId: string): LiveDelivery | undefined {
-  const d = activeDeliveries[waybillId];
-  if (!d) return undefined;
-  return applyFlags(d, serverState.flags, serverState.lastSeenAt);
-}
-
-/** The sentence the voice agent reads back to the customer. */
+/**
+ * The sentence the voice agent reads back to the customer. Polite, standard
+ * English the way a Nigerian customer-care agent speaks: no Pidgin or slang.
+ */
 export function spokenStatus(d: LiveDelivery): string {
+  if (d.status === "delivered") {
+    return `Your order has been delivered by ${d.riderName}. Thank you for choosing WhereIsMyRider, and enjoy your order.`;
+  }
   if (d.offline) {
-    return `Ah, sorry o. ${d.riderName}'s network don dey misbehave small. The last place we saw him was ${d.currentLocation}${
+    return `I'm sorry, ${d.riderName}'s phone has lost network for the moment. He was last seen at ${d.currentLocation}${
       d.lastSeenAt ? ` at ${d.lastSeenAt}` : ""
-    }. Don't worry at all, I'll update you as soon as he's back online.`;
+    }. Please don't worry, I will update you as soon as he is back online.`;
   }
   if (d.status === "delayed") {
-    return `Ehen, ${d.riderName} is at ${d.currentLocation}, but the go-slow is serious today o. He should reach you in about ${d.etaMinutes} minutes. Abeg bear with us.`;
+    return `${d.riderName} is at ${d.currentLocation}, but there is heavy traffic on the road. He should get to you in about ${d.etaMinutes} minutes. Thank you for your patience.`;
   }
-  if (d.status === "arriving" && d.etaMinutes <= 2) {
-    return `Oya, get ready! ${d.riderName} is just ${d.etaMinutes} minutes away, at ${d.currentLocation}. He go reach you sharp sharp.`;
+  if (d.status === "arriving" && d.etaMinutes <= 5) {
+    return `Good news. ${d.riderName} is just about ${d.etaMinutes} minute${d.etaMinutes === 1 ? "" : "s"} away, at ${d.currentLocation}. Please get ready to receive your order.`;
   }
-  return `Ehen, ${d.riderName} is at ${d.currentLocation} now. He go reach you in about ${d.etaMinutes} minutes, no wahala.`;
-}
-
-// Phone number -> waybill the customer asked about when they started a call,
-// so the agent's tool can resolve "my order" from the caller's number.
-const callContext = new Map<string, string>();
-const phoneKey = (p: string) => p.replace(/\D/g, "").slice(-10);
-
-export function setCallContext(phone: string, waybillId: string) {
-  callContext.set(phoneKey(phone), waybillId);
-}
-
-export function waybillForPhone(phone: string): string | undefined {
-  return callContext.get(phoneKey(phone));
+  return `${d.riderName} is currently at ${d.currentLocation}, and he should get to you in about ${d.etaMinutes} minutes.`;
 }

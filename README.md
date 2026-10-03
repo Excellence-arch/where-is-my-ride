@@ -27,6 +27,17 @@ Sign in with any phone number and any 4-digit code.
 
 State lives in a single Zustand store (`lib/store.ts`).
 
+## Rider app (`/rider`)
+
+Riders pick their profile and tap **Start trip & share live location**. The phone's GPS (`watchPosition`, high accuracy, about every 4 s or 15 m) is posted to `/api/rider/location` and stored in Postgres (Neon). The customer app polls `/api/live` every 3 s, and when a trip is live it switches from the static illustration to a real map (Leaflet with CARTO light tiles, no API key needed).
+
+- **Live data:** street name (OpenStreetMap reverse geocoding), distance, ETA (from distance plus GPS speed) and a LIVE GPS badge. The BimpeAI agent's `track_delivery` reads the same data.
+- **Real network drop:** if the rider's phone stops reporting for 45 s, the customer sees "Last Known Location (Offline)" and the agent says so.
+- **Real 2 km geofence:** the "Rider Approaching" alert fires when the rider crosses 2 km from the drop-off.
+- **Mark as delivered** shows Delivered on the customer side, and the agent confirms the delivery.
+- **Demo drive** simulates GPS moving towards the drop-off, which is handy on stage. If the rider is more than 30 km from the real address (not in Lagos), a stand-in drop-off 3 km away is used so the ETA and alert still work.
+- A screen wake lock keeps the phone awake. Browsers can't share GPS in the background, so the rider keeps the page open.
+
 ## Hackathon God Mode
 
 Triple-tap the **AO avatar** on the dashboard, or press **Shift+G** on desktop. A floating ⚡ button then stays on screen.
@@ -38,7 +49,7 @@ Triple-tap the **AO avatar** on the dashboard, or press **Shift+G** on desktop. 
 | Trigger 2km geofence | Shows the Framer Motion toast "Rider Approaching: Segun is 2 minutes away." and sets the ETA to 2 Mins |
 | Reset | Clears every override |
 
-Each override is mirrored to the server (`POST /api/demo-state`), so **the BimpeAI agent says the same thing the screen shows**. The state is held in memory, which is fine for a single demo instance.
+Each override is stored on the server (`POST /api/demo-state`, Postgres when `DATABASE_URL` is set), so **the BimpeAI agent says the same thing the screen shows**. God Mode still works on top of live GPS: traffic adds 20 minutes to the live ETA, and a network drop forces the offline state.
 
 ## BimpeAI integration
 

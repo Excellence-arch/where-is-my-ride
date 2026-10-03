@@ -1,23 +1,24 @@
 import { NextResponse } from "next/server";
-import { findByPhone, normalizeWaybill, orderSummary } from "@/lib/deliveries";
-import { liveDelivery, spokenStatus, waybillForPhone } from "@/lib/demoState";
+import { activeDeliveries, findByPhone, normalizeWaybill, orderSummary } from "@/lib/deliveries";
+import { spokenStatus } from "@/lib/demoState";
+import { getLiveDelivery, waybillForPhone } from "@/lib/server/store";
 
 // BimpeAI voice-agent webhook (the agent's `track_delivery` tool). Pure
 // in-memory lookup so it answers in milliseconds, well inside the agent's
 // 2-second tool budget.
 export const dynamic = "force-dynamic";
 
-function resolveWaybill(rawId: unknown, rawPhone: unknown): string {
+async function resolveWaybill(rawId: unknown, rawPhone: unknown): Promise<string> {
   const byId = normalizeWaybill(rawId);
-  if (liveDelivery(byId)) return byId;
+  if (activeDeliveries[byId]) return byId;
   if (typeof rawPhone === "string" && rawPhone.trim()) {
-    return waybillForPhone(rawPhone) ?? findByPhone(rawPhone)?.waybillId ?? byId;
+    return (await waybillForPhone(rawPhone)) ?? findByPhone(rawPhone)?.waybillId ?? byId;
   }
   return byId;
 }
 
-function lookup(rawId: unknown, rawPhone?: unknown) {
-  const delivery = liveDelivery(resolveWaybill(rawId, rawPhone));
+async function lookup(rawId: unknown, rawPhone?: unknown) {
+  const delivery = await getLiveDelivery(await resolveWaybill(rawId, rawPhone));
 
   if (delivery) {
     return NextResponse.json({
@@ -33,6 +34,8 @@ function lookup(rawId: unknown, rawPhone?: unknown) {
         status: delivery.status,
         offline: delivery.offline,
         lastSeenAt: delivery.lastSeenAt ?? null,
+        liveGps: delivery.live,
+        distanceKm: delivery.distanceKm ?? null,
         merchant: delivery.merchant,
         items: delivery.items,
         payment: delivery.payment,
@@ -44,7 +47,7 @@ function lookup(rawId: unknown, rawPhone?: unknown) {
 
   return NextResponse.json({
     success: false,
-    message: "Ah, sorry o, I no fit find any delivery for that waybill number. Abeg, help me confirm it.",
+    message: "I'm sorry, I couldn't find a delivery with that waybill number. Could you please confirm it for me?",
   });
 }
 

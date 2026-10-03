@@ -1,12 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { activeDeliveries } from "@/lib/deliveries";
 import { useApp } from "@/lib/store";
 import { useLiveDelivery } from "@/lib/useLiveDelivery";
 import StaticMap from "./StaticMap";
 import TrackingSummary from "./TrackingSummary";
 import TelemetryCard from "./TelemetryCard";
 
-// Where the rider sits on the route for each state (0 = pickup, 1 = customer).
+const LeafletMap = dynamic(() => import("./LeafletMap"), { ssr: false });
+
+// Where the rider sits on the static route (0 = pickup, 1 = customer).
 // Based on ETA only, so the offline ghost pin stays where the rider was last seen.
 function routeProgress(eta: number) {
   if (eta <= 2) return 0.9;
@@ -16,12 +20,23 @@ function routeProgress(eta: number) {
 
 export default function LiveMapScreen() {
   const waybillId = useApp((s) => s.selectedWaybill);
+  const trip = useApp((s) => s.trips[waybillId]);
   const delivery = useLiveDelivery(waybillId);
   const offline = delivery.offline;
+  const base = activeDeliveries[waybillId];
+
+  // Real map once the rider app is sharing GPS for this order; the static
+  // illustration otherwise (no network dependency for the scripted demo).
+  const hasGps = Boolean(delivery.rider);
+  const dest = { lat: trip?.destLat ?? base.destLat, lng: trip?.destLng ?? base.destLng };
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-slate-100">
-      <StaticMap riderVisible={!offline} progress={routeProgress(delivery.etaMinutes)} ghost={offline} />
+      {hasGps ? (
+        <LeafletMap rider={delivery.rider} dest={dest} ghost={offline} padTop={96} padBottom={300} />
+      ) : (
+        <StaticMap riderVisible={!offline} progress={routeProgress(delivery.etaMinutes)} ghost={offline} />
+      )}
       <TrackingSummary delivery={delivery} />
       <TelemetryCard delivery={delivery} />
     </div>
