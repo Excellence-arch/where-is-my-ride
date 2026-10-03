@@ -10,13 +10,25 @@ export const dynamic = "force-dynamic";
  * BimpeAI agent (which calls /api/track as its tool). If BimpeAI is not
  * configured, slow, or down, answers locally so the demo never stalls.
  */
+type AskBody = { query?: string; sessionId?: string; waybillId?: string };
+
 export async function POST(request: Request) {
-  let body: { query?: string; sessionId?: string; waybillId?: string };
+  let body: AskBody;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
+  return answer(request, body);
+}
+
+// GET /api/bimpe/ask?q=where+is+LG-90210 — quick curl/browser testing.
+export async function GET(request: Request) {
+  const sp = new URL(request.url).searchParams;
+  return answer(request, { query: sp.get("q") ?? "", sessionId: sp.get("session") ?? "wimr-get-test" });
+}
+
+async function answer(request: Request, body: AskBody) {
 
   const query = (body.query ?? "").toString().slice(0, 500).trim();
   if (!query) return NextResponse.json({ error: "Empty query" }, { status: 400 });
