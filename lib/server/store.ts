@@ -1,6 +1,13 @@
 import { neon } from "@neondatabase/serverless";
 import { activeDeliveries } from "../deliveries";
-import { DEFAULT_FLAGS, mergeLive, type DemoState, type LiveDelivery, type TripSnapshot } from "../demoState";
+import {
+  DEFAULT_FLAGS,
+  mergeLive,
+  type CustomerProfile,
+  type DemoState,
+  type LiveDelivery,
+  type TripSnapshot,
+} from "../demoState";
 import { haversine, offset, type LatLng } from "../geo";
 
 // Shared state for every serverless instance: Neon Postgres when DATABASE_URL
@@ -32,8 +39,11 @@ export async function kvSet<T>(key: string, value: T) {
 // ---------- God Mode ----------
 
 export async function getDemoState(): Promise<DemoState> {
-  const s = await kvGet<DemoState>("demo").catch(() => undefined);
-  return { flags: { ...DEFAULT_FLAGS, ...(s?.flags ?? {}) }, lastSeenAt: s?.lastSeenAt };
+  const [s, customer] = await Promise.all([
+    kvGet<DemoState>("demo").catch(() => undefined),
+    kvGet<CustomerProfile>("active_customer").catch(() => undefined),
+  ]);
+  return { flags: { ...DEFAULT_FLAGS, ...(s?.flags ?? {}) }, lastSeenAt: s?.lastSeenAt, customer: customer ?? null };
 }
 
 export async function setDemoState(patch: Partial<DemoState["flags"]>, lastSeenAt?: string) {
@@ -42,8 +52,8 @@ export async function setDemoState(patch: Partial<DemoState["flags"]>, lastSeenA
     flags: { ...cur.flags, ...patch },
     lastSeenAt: lastSeenAt !== undefined ? lastSeenAt || undefined : cur.lastSeenAt,
   };
-  await kvSet("demo", next);
-  return next;
+  await kvSet("demo", { flags: next.flags, lastSeenAt: next.lastSeenAt });
+  return { ...next, customer: cur.customer };
 }
 
 // ---------- call context (phone -> waybill) ----------
@@ -63,6 +73,8 @@ export async function waybillForPhone(phone: string) {
 type TripRow = {
   waybill_id: string;
   rider_name: string;
+  rider_phone: string | null;
+  vehicle: string | null;
   status: TripSnapshot["status"];
   lat: number | null;
   lng: number | null;
@@ -87,6 +99,8 @@ function fromRow(r: TripRow): TripSnapshot & { landmarkLat: number | null; landm
   return {
     waybillId: r.waybill_id,
     riderName: r.rider_name,
+    riderPhone: r.rider_phone,
+    vehicle: r.vehicle,
     status: r.status,
     lat: r.lat,
     lng: r.lng,
@@ -144,11 +158,13 @@ export async function startTrip(waybillId: string, fix: Fix) {
   const realDest = { lat: base.destLat, lng: base.destLng };
   const farAway = haversine(fix, realDest) > DEMO_DEST_THRESHOLD_M;
   const dest = farAway ? offset(fix, DEMO_DEST_DISTANCE_M, 45) : realDest;
-  const landmark = await reverseGeocode(fix);
+  const [landmark, existing] = await Promise.all([reverseGeocode(fix), getTrip(waybillId)]);
   const now = new Date().toISOString();
   const trip: TripSnapshot = {
     waybillId,
-    riderName: base.riderName,
+    riderName: existing?.riderName ?? base.riderName,
+    riderPhone: existing?.riderPhone ?? null,
+    vehicle: existing?.vehicle ?? null,
     status: "en_route",
     lat: fix.lat,
     lng: fix.lng,
@@ -170,13 +186,13 @@ export async function startTrip(waybillId: string, fix: Fix) {
     return trip;
   }
   await sql`
-    INSERT INTO rider_trips (waybill_id, rider_name, status, lat, lng, accuracy_m, speed_mps, heading, landmark,
+    INSERT INTO rider_trips (waybill_id, rider_name, rider_phone, vehicle, status, lat, lng, accuracy_m, speed_mps, heading, landmark,
       landmark_lat, landmark_lng, dest_lat, dest_lng, demo_dest, simulated, geofence_hit_at, started_at, updated_at, delivered_at)
-    VALUES (${waybillId}, ${base.riderName}, 'en_route', ${fix.lat}, ${fix.lng}, ${trip.accuracyM}, ${trip.speedMps},
+    VALUES (${waybillId}, ${trip.riderName}, ${trip.riderPhone}, ${trip.vehicle}, 'en_route', ${fix.lat}, ${fix.lng}, ${trip.accuracyM}, ${trip.speedMps},
       ${trip.heading}, ${landmark}, ${fix.lat}, ${fix.lng}, ${dest.lat}, ${dest.lng}, ${farAway}, ${trip.simulated},
       NULL, now(), now(), NULL)
     ON CONFLICT (waybill_id) DO UPDATE SET
-      rider_name = EXCLUDED.rider_name, status = 'en_route', lat = EXCLUDED.lat, lng = EXCLUDED.lng,
+      status = 'en_route', lat = EXCLUDED.lat, lng = EXCLUDED.lng,
       accuracy_m = EXCLUDED.accuracy_m, speed_mps = EXCLUDED.speed_mps, heading = EXCLUDED.heading,
       landmark = EXCLUDED.landmark, landmark_lat = EXCLUDED.landmark_lat, landmark_lng = EXCLUDED.landmark_lng,
       dest_lat = EXCLUDED.dest_lat, dest_lng = EXCLUDED.dest_lng, demo_dest = EXCLUDED.demo_dest,
@@ -237,6 +253,125 @@ export async function finishTrip(waybillId: string, status: "delivered" | "idle"
   await sql`UPDATE rider_trips SET status = ${status}, updated_at = now(),
     delivered_at = ${status === "delivered" ? new Date().toISOString() : null}
     WHERE waybill_id = ${waybillId}`;
+}
+
+// ---------- people: customers & riders ----------
+
+export interface RiderProfile {
+  phone: string;
+  name: string;
+  vehicleType: string;
+  plate: string;
+  waybillId: string | null;
+}
+
+/** Canonical phone key: last 10 digits, so 0803… and +234803… match. */
+export const normPhone = (p: string) => p.replace(/\D/g, "").slice(-10);
+
+const memCustomers = new Map<string, CustomerProfile>();
+const memRiders = new Map<string, RiderProfile>();
+
+export async function getCustomer(phone: string): Promise<CustomerProfile | undefined> {
+  const key = normPhone(phone);
+  if (!sql) return memCustomers.get(key);
+  const rows = (await sql`SELECT phone, name FROM customers WHERE phone = ${key}`) as CustomerProfile[];
+  return rows[0];
+}
+
+/** Register or update a customer and make them the recipient of the demo orders. */
+export async function upsertCustomer(phone: string, name: string) {
+  const c: CustomerProfile = { phone: normPhone(phone), name };
+  if (!sql) memCustomers.set(c.phone, c);
+  else
+    await sql`INSERT INTO customers (phone, name) VALUES (${c.phone}, ${name})
+              ON CONFLICT (phone) DO UPDATE SET name = EXCLUDED.name, updated_at = now()`;
+  await kvSet("active_customer", { name, phone: `+234${c.phone}` });
+  return c;
+}
+
+type RiderRow = { phone: string; name: string; vehicle_type: string; plate: string; waybill_id: string | null };
+const riderFromRow = (r: RiderRow): RiderProfile => ({
+  phone: r.phone,
+  name: r.name,
+  vehicleType: r.vehicle_type,
+  plate: r.plate,
+  waybillId: r.waybill_id,
+});
+
+export async function getRider(phone: string): Promise<RiderProfile | undefined> {
+  const key = normPhone(phone);
+  if (!sql) return memRiders.get(key);
+  const rows = (await sql`SELECT * FROM riders WHERE phone = ${key}`) as RiderRow[];
+  return rows[0] ? riderFromRow(rows[0]) : undefined;
+}
+
+export async function upsertRider(input: Omit<RiderProfile, "waybillId">) {
+  const key = normPhone(input.phone);
+  if (!sql) {
+    const prev = memRiders.get(key);
+    const r = { ...input, phone: key, waybillId: prev?.waybillId ?? null };
+    memRiders.set(key, r);
+    return r;
+  }
+  const rows = (await sql`INSERT INTO riders (phone, name, vehicle_type, plate) VALUES (${key}, ${input.name}, ${input.vehicleType}, ${input.plate})
+    ON CONFLICT (phone) DO UPDATE SET name = EXCLUDED.name, vehicle_type = EXCLUDED.vehicle_type, plate = EXCLUDED.plate, updated_at = now()
+    RETURNING *`) as RiderRow[];
+  return riderFromRow(rows[0]);
+}
+
+/** Who currently holds each delivery (for the rider's job list). */
+export async function listAssignments(): Promise<Record<string, string>> {
+  const trips = await getTrips();
+  return Object.fromEntries(trips.filter((t) => t.riderPhone).map((t) => [t.waybillId, t.riderName]));
+}
+
+/** A registered rider claims a delivery; any previous holder is released. */
+export async function assignRider(phone: string, waybillId: string) {
+  const rider = await getRider(phone);
+  if (!rider) throw new Error("Rider not registered");
+  const base = activeDeliveries[waybillId];
+  if (!base) throw new Error("Unknown waybill");
+  const vehicle = `${rider.vehicleType} · ${rider.plate}`;
+  const riderPhone = `+234${rider.phone}`;
+
+  if (!sql) {
+    for (const r of memRiders.values()) if (r.waybillId === waybillId) r.waybillId = null;
+    memRiders.set(rider.phone, { ...rider, waybillId });
+    const t = memTrips.get(waybillId);
+    memTrips.set(waybillId, {
+      ...(t ?? {
+        waybillId,
+        status: "idle",
+        lat: null,
+        lng: null,
+        accuracyM: null,
+        speedMps: null,
+        heading: null,
+        landmark: null,
+        destLat: null,
+        destLng: null,
+        demoDest: false,
+        simulated: false,
+        startedAt: null,
+        deliveredAt: null,
+        updatedAt: new Date().toISOString(),
+      }),
+      riderName: rider.name,
+      riderPhone,
+      vehicle,
+      // A new rider starts fresh.
+      ...(t && t.riderPhone !== riderPhone ? { status: "idle" as const } : {}),
+    });
+    return { ...rider, waybillId };
+  }
+  await sql`UPDATE riders SET waybill_id = NULL, updated_at = now() WHERE waybill_id = ${waybillId} AND phone <> ${rider.phone}`;
+  await sql`UPDATE riders SET waybill_id = ${waybillId}, updated_at = now() WHERE phone = ${rider.phone}`;
+  await sql`INSERT INTO rider_trips (waybill_id, rider_name, rider_phone, vehicle, status, updated_at)
+    VALUES (${waybillId}, ${rider.name}, ${riderPhone}, ${vehicle}, 'idle', now())
+    ON CONFLICT (waybill_id) DO UPDATE SET
+      status = CASE WHEN rider_trips.rider_phone IS DISTINCT FROM EXCLUDED.rider_phone THEN 'idle' ELSE rider_trips.status END,
+      rider_name = EXCLUDED.rider_name, rider_phone = EXCLUDED.rider_phone, vehicle = EXCLUDED.vehicle, updated_at = now()`;
+  return { ...rider, waybillId };
 }
 
 // ---------- reverse geocoding (OpenStreetMap Nominatim) ----------

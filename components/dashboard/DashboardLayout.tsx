@@ -17,6 +17,14 @@ function greeting() {
 export default function DashboardLayout() {
   const unlockGodMode = useApp((s) => s.unlockGodMode);
   const toast = useApp((s) => s.toast);
+  const name = useApp((s) => s.name);
+  const firstName = name.split(" ")[0] || "there";
+  const initials = name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("") || "?";
   const taps = useRef<number[]>([]);
 
   // Hidden God Mode: triple-tap the avatar within 600ms.
@@ -39,11 +47,11 @@ export default function DashboardLayout() {
             aria-label="Profile"
             className="flex h-12 w-12 select-none items-center justify-center rounded-2xl bg-blue-100 text-base font-bold text-blue-700"
           >
-            AO
+            {initials}
           </motion.button>
           <div>
             <p className="text-sm text-slate-500">{greeting()},</p>
-            <p className="text-lg font-bold tracking-tight text-slate-900">Adaeze 👋</p>
+            <p className="text-lg font-bold tracking-tight text-slate-900">{firstName} 👋</p>
           </div>
         </div>
         <button

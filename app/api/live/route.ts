@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const [trips, state] = await Promise.all([getTrips().catch(() => []), getDemoState()]);
   return NextResponse.json(
-    { state, trips: Object.fromEntries(trips.filter((t) => t.status !== "idle").map((t) => [t.waybillId, t])) },
+    { state, trips: Object.fromEntries(trips.filter((t) => t.status !== "idle" || t.riderPhone).map((t) => [t.waybillId, t])) },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

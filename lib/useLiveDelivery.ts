@@ -12,5 +12,8 @@ export function useLiveDelivery(waybillId: string): LiveDelivery {
   const flags = useApp((s) => s.flags);
   const lastSeenAt = useApp((s) => s.lastSeenAt);
   const trip = useApp((s) => s.trips[waybillId]);
-  return mergeLive(activeDeliveries[waybillId], trip, { flags, lastSeenAt });
+  const name = useApp((s) => s.name);
+  const phone = useApp((s) => s.phone);
+  const customer = name ? { name, phone: phone.replace(/\s/g, "") } : null;
+  return mergeLive(activeDeliveries[waybillId], trip, { flags, lastSeenAt, customer });
 }

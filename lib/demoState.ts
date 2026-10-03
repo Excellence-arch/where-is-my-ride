@@ -16,8 +16,15 @@ export const DEFAULT_FLAGS: DemoFlags = {
   geofenceBreached: false,
 };
 
+export interface CustomerProfile {
+  name: string;
+  phone: string;
+}
+
 export interface DemoState {
   flags: DemoFlags;
+  /** The signed-in customer: demo orders are delivered to them. */
+  customer?: CustomerProfile | null;
   /** Time label shown on the "Last Known Location" badge for a forced network drop. */
   lastSeenAt?: string;
 }
@@ -30,6 +37,9 @@ export const GEOFENCE_ETA_MINUTES = 2;
 export interface TripSnapshot {
   waybillId: string;
   riderName: string;
+  /** Set when a registered rider has claimed this delivery. */
+  riderPhone: string | null;
+  vehicle: string | null;
   status: "idle" | "en_route" | "delivered";
   lat: number | null;
   lng: number | null;
@@ -70,6 +80,13 @@ export function mergeLive(
   now = Date.now(),
 ): LiveDelivery {
   let d: LiveDelivery = { ...base, offline: false, live: false };
+
+  // Registered people replace the demo names: the signed-in customer and the
+  // rider who claimed this delivery.
+  if (state.customer?.name) d = { ...d, customerName: state.customer.name, customerPhone: state.customer.phone };
+  if (trip?.riderPhone) {
+    d = { ...d, riderName: trip.riderName, riderPhone: trip.riderPhone, vehicle: trip.vehicle ?? d.vehicle };
+  }
 
   if (trip && trip.status === "delivered") {
     return { ...d, status: "delivered", etaMinutes: 0, live: true, currentLocation: base.destination };
@@ -120,19 +137,21 @@ export function mergeLive(
  * English the way a Nigerian customer-care agent speaks: no Pidgin or slang.
  */
 export function spokenStatus(d: LiveDelivery): string {
+  // "at Ikeja Underbridge" vs. "about 3.0 km from Allen Avenue" (GPS fix without a street name).
+  const where = d.currentLocation.startsWith("about ") ? d.currentLocation : `at ${d.currentLocation}`;
   if (d.status === "delivered") {
     return `Your order has been delivered by ${d.riderName}. Thank you for choosing WhereIsMyRider, and enjoy your order.`;
   }
   if (d.offline) {
-    return `I'm sorry, ${d.riderName}'s phone has lost network for the moment. He was last seen at ${d.currentLocation}${
+    return `I'm sorry, ${d.riderName}'s phone has lost network for the moment. He was last seen ${where}${
       d.lastSeenAt ? ` at ${d.lastSeenAt}` : ""
     }. Please don't worry, I will update you as soon as he is back online.`;
   }
   if (d.status === "delayed") {
-    return `${d.riderName} is at ${d.currentLocation}, but there is heavy traffic on the road. He should get to you in about ${d.etaMinutes} minutes. Thank you for your patience.`;
+    return `${d.riderName} is ${where}, but there is heavy traffic on the road. He should get to you in about ${d.etaMinutes} minutes. Thank you for your patience.`;
   }
   if (d.status === "arriving" && d.etaMinutes <= 5) {
-    return `Good news. ${d.riderName} is just about ${d.etaMinutes} minute${d.etaMinutes === 1 ? "" : "s"} away, at ${d.currentLocation}. Please get ready to receive your order.`;
+    return `Good news. ${d.riderName} is just about ${d.etaMinutes} minute${d.etaMinutes === 1 ? "" : "s"} away, ${where}. Please get ready to receive your order.`;
   }
-  return `${d.riderName} is currently at ${d.currentLocation}, and he should get to you in about ${d.etaMinutes} minutes.`;
+  return `${d.riderName} is currently ${where}, and he should get to you in about ${d.etaMinutes} minutes.`;
 }

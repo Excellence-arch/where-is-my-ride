@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { activeDeliveries } from "@/lib/deliveries";
 import { parseFix } from "@/lib/server/fix";
-import { finishTrip, getTrip, startTrip } from "@/lib/server/store";
+import { finishTrip, getDemoState, getTrip, startTrip } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const waybillId = new URL(request.url).searchParams.get("waybillId") ?? "";
   if (!activeDeliveries[waybillId]) return NextResponse.json({ error: "Unknown waybill" }, { status: 404 });
-  const trip = await getTrip(waybillId);
-  return NextResponse.json({ trip: trip ?? null });
+  const [trip, state] = await Promise.all([getTrip(waybillId), getDemoState()]);
+  return NextResponse.json({ trip: trip ?? null, customer: state.customer ?? null });
 }
 
 /** Rider app: start (with first GPS fix), mark delivered, or stop sharing. */

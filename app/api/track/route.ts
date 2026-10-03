@@ -26,6 +26,7 @@ async function lookup(rawId: unknown, rawPhone?: unknown) {
       data: {
         waybillId: delivery.waybillId,
         orderId: delivery.orderId,
+        customerName: delivery.customerName,
         riderName: delivery.riderName,
         riderPhone: delivery.riderPhone,
         currentLocation: delivery.currentLocation,

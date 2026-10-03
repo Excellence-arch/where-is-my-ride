@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   Bike,
+  Loader2,
+  User,
   CheckCircle2,
   Gauge,
   LocateFixed,
@@ -25,7 +27,7 @@ import { bearing, etaMinutes, haversine, stepTowards, type LatLng } from "@/lib/
 
 const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), { ssr: false });
 
-const RIDER_KEY = "wimr-rider-waybill";
+const RIDER_KEY = "wimr-rider-session";
 const SEND_EVERY_MS = 4000;
 const SEND_EVERY_M = 15;
 const SIM_TICK_MS = 2000;
@@ -42,7 +44,17 @@ interface Fix extends LatLng {
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
-function readSaved() {
+interface RiderProfile {
+  phone: string;
+  name: string;
+  vehicleType: string;
+  plate: string;
+  waybillId: string | null;
+}
+
+const VEHICLES = ["Motorbike", "Bicycle", "Car", "Tricycle", "Van"] as const;
+
+function readSaved(): string | null {
   try {
     return localStorage.getItem(RIDER_KEY);
   } catch {
@@ -50,46 +62,71 @@ function readSaved() {
   }
 }
 
-function save(v: string | null) {
+function save(phone: string | null) {
   try {
-    if (v) localStorage.setItem(RIDER_KEY, v);
+    if (phone) localStorage.setItem(RIDER_KEY, phone);
     else localStorage.removeItem(RIDER_KEY);
   } catch {
     /* private mode */
   }
 }
 
+async function fetchRider(phone: string) {
+  const res = await fetch(`/api/riders?phone=${encodeURIComponent(phone)}`, { cache: "no-store" });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Could not load your profile.");
+  return json as { rider: RiderProfile | null; assignments: Record<string, string> };
+}
+
 export default function RiderApp() {
-  const [waybillId, setWaybillId] = useState<string | null>(null);
+  const [rider, setRider] = useState<RiderProfile | null>(null);
+  const [savedPhone, setSavedPhone] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const saved = readSaved();
-    if (saved && activeDeliveries[saved]) setWaybillId(saved);
-    setReady(true);
+    const phone = readSaved();
+    if (!phone) {
+      setReady(true);
+      return;
+    }
+    setSavedPhone(phone);
+    fetchRider(phone)
+      .then(({ rider }) => setRider(rider))
+      .catch(() => {})
+      .finally(() => setReady(true));
   }, []);
 
   if (!ready) return <div className="min-h-dvh bg-slate-50" />;
 
+  const signOut = () => {
+    save(null);
+    setRider(null);
+    setSavedPhone(null);
+  };
+
   return (
     <main className="relative mx-auto min-h-dvh w-full max-w-md overflow-hidden bg-slate-50">
       <AnimatePresence mode="wait">
-        {waybillId ? (
-          <motion.div key="trip" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+        {rider?.waybillId && activeDeliveries[rider.waybillId] ? (
+          <motion.div key={`trip-${rider.waybillId}`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <RiderTrip
-              delivery={activeDeliveries[waybillId]}
-              onSignOut={() => {
-                save(null);
-                setWaybillId(null);
-              }}
+              delivery={activeDeliveries[rider.waybillId]}
+              rider={rider}
+              onSignOut={signOut}
+              onSwitchJob={() => setRider({ ...rider, waybillId: null })}
             />
           </motion.div>
+        ) : rider ? (
+          <motion.div key="jobs" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <JobPicker rider={rider} onAssigned={setRider} onSignOut={signOut} />
+          </motion.div>
         ) : (
-          <motion.div key="pick" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <RiderSignIn
-              onPick={(id) => {
-                save(id);
-                setWaybillId(id);
+          <motion.div key="auth" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <RiderAuth
+              initialPhone={savedPhone ?? ""}
+              onReady={(r) => {
+                save(r.phone);
+                setRider(r);
               }}
             />
           </motion.div>
@@ -99,7 +136,59 @@ export default function RiderApp() {
   );
 }
 
-function RiderSignIn({ onPick }: { onPick: (waybillId: string) => void }) {
+const card = "rounded-[24px] border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
+const field =
+  "mt-2 flex h-14 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 focus-within:border-blue-600 focus-within:bg-white";
+const input = "h-full w-full bg-transparent text-base font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400";
+const primary =
+  "mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-base font-semibold text-white disabled:bg-slate-200 disabled:text-slate-400";
+
+/** Phone → mock OTP → (new riders) name, vehicle, plate. */
+function RiderAuth({ initialPhone, onReady }: { initialPhone: string; onReady: (r: RiderProfile) => void }) {
+  const [step, setStep] = useState<"phone" | "otp" | "register">("phone");
+  const [phone, setPhone] = useState(initialPhone.replace(/^234/, "0"));
+  const [otp, setOtp] = useState("");
+  const [name, setName] = useState("");
+  const [vehicleType, setVehicleType] = useState<(typeof VEHICLES)[number]>("Motorbike");
+  const [plate, setPlate] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const digits = phone.replace(/\D/g, "");
+  const e164 = `+234${digits.replace(/^(234|0)/, "")}`;
+
+  const verify = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const { rider } = await fetchRider(e164);
+      if (rider) onReady(rider);
+      else setStep("register");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const register = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/riders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: e164, name, vehicleType, plate }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not register.");
+      onReady(json.rider);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="flex min-h-dvh flex-col px-6 pb-10 pt-14">
       <a href="/" className="flex w-fit items-center gap-1.5 text-sm font-medium text-slate-500">
@@ -114,33 +203,254 @@ function RiderSignIn({ onPick }: { onPick: (waybillId: string) => void }) {
           <p className="text-sm text-slate-500">Share your live location with customers.</p>
         </div>
       </div>
-      <h1 className="mt-10 text-[28px] font-bold leading-tight tracking-tight text-slate-900">Who&apos;s riding today?</h1>
-      <p className="mt-2 text-slate-500">Pick your profile to see your assigned delivery.</p>
+      <h1 className="mt-10 text-[28px] font-bold leading-tight tracking-tight text-slate-900">
+        {step === "phone" ? "Rider sign in" : step === "otp" ? "Enter your code" : "Register as a rider"}
+      </h1>
+      <p className="mt-2 text-slate-500">
+        {step === "phone"
+          ? "Use your phone number to sign in or register."
+          : step === "otp"
+            ? `We sent a 4-digit code to ${e164}.`
+            : "Tell us who you are and what you ride."}
+      </p>
 
-      <div className="mt-6 space-y-3">
-        {Object.values(activeDeliveries).map((d) => (
-          <motion.button
-            key={d.waybillId}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onPick(d.waybillId)}
-            className="flex w-full items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 text-left shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+      <div className="mt-8">
+        {step === "phone" && (
+          <form
+            className={card}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (digits.length >= 10) setStep("otp");
+            }}
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-lg font-bold text-blue-700">
-              {d.riderName[0]}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-semibold text-slate-900">{d.riderName}</span>
-              <span className="block truncate text-sm text-slate-500">{d.vehicle}</span>
-            </span>
-            <span className="font-mono text-xs font-bold text-slate-500">{d.waybillId}</span>
-          </motion.button>
-        ))}
+            <label htmlFor="rphone" className="text-sm font-medium text-slate-500">
+              Phone number
+            </label>
+            <div className={field}>
+              <Phone className="h-5 w-5 text-slate-400" />
+              <input
+                id="rphone"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="0802 555 0177"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/[^\d\s+]/g, "").slice(0, 16))}
+                className={input}
+                autoFocus
+              />
+            </div>
+            <button type="submit" disabled={digits.length < 10} className={primary}>
+              Send code
+            </button>
+          </form>
+        )}
+
+        {step === "otp" && (
+          <form
+            className={card}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (otp.length === 4) verify();
+            }}
+          >
+            <input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              aria-label="4-digit code"
+              value={otp}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+                setOtp(v);
+                if (v.length === 4) setTimeout(verify, 200);
+              }}
+              placeholder="• • • •"
+              className="h-16 w-full rounded-2xl border border-slate-200 bg-slate-50 text-center text-2xl font-bold tracking-[0.6em] text-slate-900 outline-none focus:border-blue-600 focus:bg-white"
+              autoFocus
+            />
+            {error && <p className="mt-3 text-sm font-medium text-rose-600">{error}</p>}
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <button type="button" onClick={() => { setOtp(""); setStep("phone"); }} className="flex items-center gap-1.5 font-medium text-slate-500">
+                <ArrowLeft className="h-4 w-4" /> Change number
+              </button>
+              <span className="flex items-center gap-1.5 text-slate-400">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Demo: any 4 digits
+              </span>
+            </div>
+          </form>
+        )}
+
+        {step === "register" && (
+          <form
+            className={card}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!busy) register();
+            }}
+          >
+            <label htmlFor="rname" className="text-sm font-medium text-slate-500">
+              Full name
+            </label>
+            <div className={field}>
+              <User className="h-5 w-5 text-slate-400" />
+              <input
+                id="rname"
+                autoComplete="name"
+                autoCapitalize="words"
+                placeholder="e.g. Segun Adebayo"
+                value={name}
+                onChange={(e) => setName(e.target.value.slice(0, 60))}
+                className={input}
+                autoFocus
+              />
+            </div>
+
+            <p className="mt-5 text-sm font-medium text-slate-500">Vehicle</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {VEHICLES.map((v) => (
+                <button
+                  type="button"
+                  key={v}
+                  onClick={() => setVehicleType(v)}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                    vehicleType === v ? "bg-blue-600 text-white" : "border border-slate-200 bg-white text-slate-700"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+
+            <label htmlFor="rplate" className="mt-5 block text-sm font-medium text-slate-500">
+              Plate number
+            </label>
+            <div className={field}>
+              <Bike className="h-5 w-5 text-slate-400" />
+              <input
+                id="rplate"
+                autoCapitalize="characters"
+                placeholder="e.g. KJA-482QB"
+                value={plate}
+                onChange={(e) => setPlate(e.target.value.toUpperCase().slice(0, 12))}
+                className={`${input} uppercase`}
+              />
+            </div>
+            {error && <p className="mt-3 text-sm font-medium text-rose-600">{error}</p>}
+            <button type="submit" disabled={busy || name.trim().length < 2 || plate.trim().length < 3} className={primary}>
+              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "Register"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
 }
 
-function RiderTrip({ delivery: d, onSignOut }: { delivery: Delivery; onSignOut: () => void }) {
+/** Registered rider claims one of the open deliveries. */
+function JobPicker({
+  rider,
+  onAssigned,
+  onSignOut,
+}: {
+  rider: RiderProfile;
+  onAssigned: (r: RiderProfile) => void;
+  onSignOut: () => void;
+}) {
+  const [assignments, setAssignments] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchRider(rider.phone)
+      .then((j) => setAssignments(j.assignments))
+      .catch(() => {});
+  }, [rider.phone]);
+
+  const claim = async (waybillId: string) => {
+    setBusy(waybillId);
+    setError("");
+    try {
+      const res = await fetch("/api/riders/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: rider.phone, waybillId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not pick up this delivery.");
+      onAssigned(json.rider);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="flex min-h-dvh flex-col px-6 pb-10 pt-14">
+      <div className="flex items-center gap-3">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-lg font-bold text-blue-700">
+          {rider.name[0]}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-slate-900">Welcome, {rider.name.split(" ")[0]}</p>
+          <p className="truncate text-sm text-slate-500">
+            {rider.vehicleType} · {rider.plate}
+          </p>
+        </div>
+        <button onClick={onSignOut} aria-label="Sign out" className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-600">
+          <LogOut className="h-4 w-4" />
+        </button>
+      </div>
+      <h1 className="mt-10 text-[28px] font-bold leading-tight tracking-tight text-slate-900">Pick up a delivery</h1>
+      <p className="mt-2 text-slate-500">Choose the order you&apos;re carrying. The customer will see your name and live location.</p>
+      {error && <p className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</p>}
+      <div className="mt-6 space-y-3">
+        {Object.values(activeDeliveries).map((d) => {
+          const holder = assignments[d.waybillId];
+          const mine = holder === rider.name;
+          return (
+            <motion.button
+              key={d.waybillId}
+              whileTap={{ scale: 0.98 }}
+              disabled={busy !== null}
+              onClick={() => claim(d.waybillId)}
+              className="w-full rounded-[24px] border border-slate-100 bg-white p-4 text-left shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-sm font-bold text-slate-900">{d.waybillId}</span>
+                {busy === d.waybillId ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                ) : holder ? (
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${mine ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {mine ? "Yours" : `With ${holder.split(" ")[0]}`}
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">Open</span>
+                )}
+              </div>
+              <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-700">
+                <MapPin className="h-3.5 w-3.5 text-slate-400" /> {d.destination}
+              </p>
+              <p className="mt-0.5 truncate text-xs text-slate-500">
+                {d.merchant} · {d.items.reduce((n, i) => n + i.qty, 0)} item{d.items.reduce((n, i) => n + i.qty, 0) === 1 ? "" : "s"}
+              </p>
+            </motion.button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function RiderTrip({
+  delivery: d,
+  rider,
+  onSignOut,
+  onSwitchJob,
+}: {
+  delivery: Delivery;
+  rider: RiderProfile;
+  onSignOut: () => void;
+  onSwitchJob: () => void;
+}) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [trip, setTrip] = useState<TripSnapshot | null>(null);
   const [fix, setFix] = useState<Fix | null>(null);
@@ -148,6 +458,9 @@ function RiderTrip({ delivery: d, onSignOut }: { delivery: Delivery; onSignOut: 
   const [error, setError] = useState<string | null>(null);
   const [simulating, setSimulating] = useState(false);
   const [confirmDeliver, setConfirmDeliver] = useState(false);
+  const [customer, setCustomer] = useState<{ name: string; phone: string } | null>(null);
+  const customerName = customer?.name ?? d.customerName;
+  const customerPhone = customer?.phone ?? d.customerPhone;
   const [, setNow] = useState(0);
 
   const watchId = useRef<number | null>(null);
@@ -170,7 +483,8 @@ function RiderTrip({ delivery: d, onSignOut }: { delivery: Delivery; onSignOut: 
   useEffect(() => {
     fetch(`/api/rider/trip?waybillId=${d.waybillId}`, { cache: "no-store" })
       .then((r) => r.json())
-      .then((j: { trip: TripSnapshot | null }) => {
+      .then((j: { trip: TripSnapshot | null; customer: { name: string; phone: string } | null }) => {
+        if (j.customer) setCustomer(j.customer);
         if (!j.trip) return;
         setTrip(j.trip);
         if (j.trip.lat != null && j.trip.lng != null) setFix({ lat: j.trip.lat, lng: j.trip.lng, heading: j.trip.heading });
@@ -348,11 +662,13 @@ function RiderTrip({ delivery: d, onSignOut }: { delivery: Delivery; onSignOut: 
         <LeafletMap rider={fix} dest={dest} padTop={72} padBottom={24} />
         <div className="absolute inset-x-4 top-4 z-[500] flex items-center gap-3 rounded-[24px] border border-slate-100 bg-white p-3 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
           <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 font-bold text-blue-700">
-            {d.riderName[0]}
+            {rider.name[0]}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-slate-900">Hi {d.riderName}</p>
-            <p className="truncate text-xs text-slate-500">{d.vehicle}</p>
+            <p className="truncate font-semibold text-slate-900">Hi {rider.name.split(" ")[0]}</p>
+            <p className="truncate text-xs text-slate-500">
+              {rider.vehicleType} · {rider.plate}
+            </p>
           </div>
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -362,7 +678,7 @@ function RiderTrip({ delivery: d, onSignOut }: { delivery: Delivery; onSignOut: 
             <span className={`h-1.5 w-1.5 rounded-full ${sharing ? "animate-pulse bg-emerald-600" : phase === "delivered" ? "bg-slate-500" : "bg-white"}`} />
             {sharing ? (simulating ? "Demo drive" : "Sharing live") : phase === "delivered" ? "Delivered" : "Not sharing"}
           </span>
-          <button onClick={onSignOut} aria-label="Switch rider" className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
+          <button onClick={onSignOut} aria-label="Sign out" className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
             <LogOut className="h-4 w-4" />
           </button>
         </div>
@@ -403,12 +719,19 @@ function RiderTrip({ delivery: d, onSignOut }: { delivery: Delivery; onSignOut: 
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Deliver to</p>
-              <p className="font-semibold text-slate-900">{d.customerName}</p>
+              <p className="font-semibold text-slate-900">{customerName}</p>
               <p className="flex items-center gap-1 text-sm text-slate-500">
                 <MapPin className="h-3.5 w-3.5" /> {d.destination}
               </p>
             </div>
-            <span className="font-mono text-xs font-bold text-slate-500">{d.waybillId}</span>
+            <div className="text-right">
+              <span className="font-mono text-xs font-bold text-slate-500">{d.waybillId}</span>
+              {!sharing && (
+                <button onClick={onSwitchJob} className="block text-xs font-semibold text-blue-600">
+                  Change job
+                </button>
+              )}
+            </div>
           </div>
           <div className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-sm">
             {d.items.map((i) => (
@@ -424,7 +747,7 @@ function RiderTrip({ delivery: d, onSignOut }: { delivery: Delivery; onSignOut: 
             <span className={`font-bold ${payOnDelivery ? "text-amber-700" : "text-slate-900"}`}>{naira(total)}</span>
           </div>
           <a
-            href={`tel:${d.customerPhone}`}
+            href={`tel:${customerPhone}`}
             className="mt-3 flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-900"
           >
             <Phone className="h-4 w-4" /> Call customer
@@ -506,7 +829,7 @@ function RiderTrip({ delivery: d, onSignOut }: { delivery: Delivery; onSignOut: 
             >
               <p className="text-lg font-bold text-slate-900">Confirm delivery</p>
               <p className="mt-1 text-sm text-slate-500">
-                {payOnDelivery ? `Make sure you've collected ${naira(total)} from ${d.customerName}.` : `Hand the package to ${d.customerName}.`}
+                {payOnDelivery ? `Make sure you've collected ${naira(total)} from ${customerName}.` : `Hand the package to ${customerName}.`}
               </p>
               <div className="mt-5 grid grid-cols-2 gap-2">
                 <button onClick={() => setConfirmDeliver(false)} className="h-12 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-900">

@@ -22,6 +22,7 @@ export interface Toast {
 interface AppState {
   screen: Screen;
   phone: string;
+  name: string;
   selectedWaybill: string;
   voiceOpen: boolean;
   callOpen: boolean;
@@ -36,7 +37,7 @@ interface AppState {
   /** When God Mode was last changed locally (server sync waits a moment after). */
   flagsChangedAt: number;
 
-  login: (phone: string) => void;
+  login: (phone: string, name: string) => void;
   logout: () => void;
   go: (screen: Screen) => void;
   openTracker: (waybillId: string) => void;
@@ -69,18 +70,27 @@ const SEED_AUDIT: AuditEntry[] = [
 
 const SESSION_KEY = "wimr-session";
 
-function persistSession(phone: string | null) {
+export interface Session {
+  phone: string;
+  name: string;
+}
+
+function persistSession(session: Session | null) {
   try {
-    if (phone) localStorage.setItem(SESSION_KEY, phone);
+    if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     else localStorage.removeItem(SESSION_KEY);
   } catch {
     /* storage unavailable (private mode) — session just won't persist */
   }
 }
 
-export function readSession(): string | null {
+export function readSession(): Session | null {
   try {
-    return localStorage.getItem(SESSION_KEY);
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as Partial<Session>;
+    // Sessions from before names were collected must register again.
+    return s && typeof s.phone === "string" && typeof s.name === "string" && s.name ? (s as Session) : null;
   } catch {
     return null;
   }
@@ -95,9 +105,13 @@ function syncFlags(flags: DemoFlags, lastSeenAt?: string) {
   }).catch(() => {});
 }
 
+/** Name of whoever is riding the hero order (a registered rider, or the demo "Segun"). */
+const heroRider = (trips: Record<string, TripSnapshot>) => trips[PRIMARY_WAYBILL]?.riderName?.split(" ")[0] ?? "Segun";
+
 export const useApp = create<AppState>((set, get) => ({
   screen: "auth",
   phone: "",
+  name: "",
   selectedWaybill: PRIMARY_WAYBILL,
   voiceOpen: false,
   callOpen: false,
@@ -109,13 +123,13 @@ export const useApp = create<AppState>((set, get) => ({
   trips: {},
   flagsChangedAt: 0,
 
-  login: (phone) => {
-    persistSession(phone);
-    set({ phone, screen: "dashboard" });
+  login: (phone, name) => {
+    persistSession({ phone, name });
+    set({ phone, name, screen: "dashboard" });
   },
   logout: () => {
     persistSession(null);
-    set({ phone: "", screen: "auth", voiceOpen: false, callOpen: false });
+    set({ phone: "", name: "", screen: "auth", voiceOpen: false, callOpen: false });
   },
   go: (screen) => set({ screen }),
   openTracker: (waybillId) => set({ selectedWaybill: waybillId, screen: "map" }),
@@ -133,7 +147,9 @@ export const useApp = create<AppState>((set, get) => ({
     set({ flags, lastSeenAt, flagsChangedAt: Date.now() });
     syncFlags(flags, lastSeenAt);
     get().addAudit(
-      on ? "MTN signal lost on Segun's device — holding last known location" : "Segun back online — live tracking restored",
+      on
+        ? `MTN signal lost on ${heroRider(get().trips)}'s device — holding last known location`
+        : `${heroRider(get().trips)} back online — live tracking restored`,
       "network",
     );
   },
@@ -151,7 +167,7 @@ export const useApp = create<AppState>((set, get) => ({
     const flags = { ...get().flags, geofenceBreached: true };
     set({ flags, flagsChangedAt: Date.now() });
     syncFlags(flags);
-    get().showToast("Rider Approaching", "Segun is 2 minutes away.");
+    get().showToast("Rider Approaching", `${heroRider(get().trips)} is 2 minutes away.`);
     get().addAudit("Geofence breached — customer auto-notified (2km radius)", "geofence");
   },
   resetDemo: () => {

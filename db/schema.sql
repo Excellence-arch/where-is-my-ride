@@ -27,3 +27,23 @@ CREATE TABLE IF NOT EXISTS app_state (
   value      jsonb NOT NULL,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Registration (customers and riders), added with the sign-up flows.
+ALTER TABLE rider_trips ADD COLUMN IF NOT EXISTS rider_phone text, ADD COLUMN IF NOT EXISTS vehicle text;
+
+CREATE TABLE IF NOT EXISTS customers (
+  phone      text PRIMARY KEY,   -- last 10 digits, e.g. 8035550142
+  name       text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS riders (
+  phone        text PRIMARY KEY, -- last 10 digits
+  name         text NOT NULL,
+  vehicle_type text NOT NULL,
+  plate        text NOT NULL,
+  waybill_id   text,             -- delivery the rider has picked up
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);

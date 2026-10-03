@@ -21,7 +21,7 @@ export default function Home() {
 
   useEffect(() => {
     const saved = readSession();
-    if (saved) login(saved);
+    if (saved) login(saved.phone, saved.name);
     // Shared tracker links: /?track=LG-90210
     const shared = new URLSearchParams(window.location.search).get("track");
     if (saved && shared && activeDeliveries[shared]) useApp.getState().openTracker(shared);

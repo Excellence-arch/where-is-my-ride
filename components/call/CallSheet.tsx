@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bot, Loader2, Phone, PhoneCall, PhoneOff, RotateCcw, User, X } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { activeDeliveries } from "@/lib/deliveries";
+import { useLiveDelivery } from "@/lib/useLiveDelivery";
 
 type CallStatus = "queued" | "ringing" | "answered" | "ended" | "busy" | "failed" | "cancelled";
 type Phase = "confirm" | "dialing" | CallStatus;
@@ -39,7 +39,7 @@ export default function CallSheet() {
   const sessionPhone = useApp((s) => s.phone);
   const waybillId = useApp((s) => s.selectedWaybill);
   const addAudit = useApp((s) => s.addAudit);
-  const delivery = activeDeliveries[waybillId];
+  const delivery = useLiveDelivery(waybillId);
 
   const [phone, setPhone] = useState("");
   const [phase, setPhase] = useState<Phase>("confirm");

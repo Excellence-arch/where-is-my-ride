@@ -20,7 +20,7 @@ Sign in with any phone number and any 4-digit code.
 
 | Workflow | Components |
 | --- | --- |
-| A. Auth | `components/auth/SplashToAuth.tsx`: phone entry, then a mock 4-digit OTP (slide-up transition), then the dashboard |
+| A. Auth | `components/auth/SplashToAuth.tsx`: phone entry, then a mock 4-digit OTP (slide-up transition). New customers are asked for their full name (stored in `customers`); returning customers go straight to the dashboard |
 | B. Dashboard | `DashboardLayout`, `DeliveryCard` (snap-x rail with a share button), `VoiceTriggerHero`, `VoiceSheet` (BimpeAI bottom sheet), `AIAuditTrail` |
 | C. Live map | `LiveMapScreen`, `StaticMap` (inline SVG, so no API keys and no tiles), `TrackingSummary` (`top-4`), `TelemetryCard` (`bottom-24`) |
 | God Mode | `components/godmode/GodModePanel.tsx` and `components/ui/ProximityToast.tsx` |
@@ -29,7 +29,7 @@ State lives in a single Zustand store (`lib/store.ts`).
 
 ## Rider app (`/rider`)
 
-Riders pick their profile and tap **Start trip & share live location**. The phone's GPS (`watchPosition`, high accuracy, about every 4 s or 15 m) is posted to `/api/rider/location` and stored in Postgres (Neon). The customer app polls `/api/live` every 3 s, and when a trip is live it switches from the static illustration to a real map (Leaflet with CARTO light tiles, no API key needed).
+Riders sign in with their phone and a mock OTP. New riders register their **full name, vehicle type and plate number** (stored in `riders`), then pick up one of the open deliveries. The customer, the rider app and the voice agent then use the registered rider's name and vehicle, and the signed-in customer's name. Riders tap **Start trip & share live location**. The phone's GPS (`watchPosition`, high accuracy, about every 4 s or 15 m) is posted to `/api/rider/location` and stored in Postgres (Neon). The customer app polls `/api/live` every 3 s, and when a trip is live it switches from the static illustration to a real map (Leaflet with CARTO light tiles, no API key needed).
 
 - **Live data:** street name (OpenStreetMap reverse geocoding), distance, ETA (from distance plus GPS speed) and a LIVE GPS badge. The BimpeAI agent's `track_delivery` reads the same data.
 - **Real network drop:** if the rider's phone stops reporting for 45 s, the customer sees "Last Known Location (Offline)" and the agent says so.
