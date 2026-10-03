@@ -84,7 +84,8 @@ export function mergeLive(
       live: true,
       demoDest: trip.demoDest,
       distanceKm: Math.round(dist / 100) / 10,
-      currentLocation: trip.landmark || `${trip.lat.toFixed(4)}, ${trip.lng.toFixed(4)}`,
+      // Never surface raw coordinates; they're unreadable on screen and on a call.
+      currentLocation: trip.landmark || `about ${(Math.round(dist / 100) / 10).toFixed(1)} km from ${base.destination}`,
       etaMinutes: etaMinutes(dist, trip.speedMps),
       status: dist <= GEOFENCE_METERS ? "arriving" : "in_transit",
       rider: { lat: trip.lat, lng: trip.lng, heading: trip.heading, accuracyM: trip.accuracyM, updatedAt: trip.updatedAt },

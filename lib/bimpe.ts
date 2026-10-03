@@ -49,7 +49,7 @@ const INTEGRATION_NAME = "WhereIsMyRider";
 const TOOL_VERSION = "[wimr-tool v2]";
 
 // Bump when SYSTEM_PROMPT changes; setup pushes it to the agent's workflow.
-const PROMPT_VERSION = "[wimr-prompt v3-ng-english]";
+const PROMPT_VERSION = "[wimr-prompt v4-ng-english]";
 
 const SYSTEM_PROMPT = `${PROMPT_VERSION}
 You are Tolu, a customer-care agent at WhereIsMyRider, a delivery-tracking service in Lagos, Nigeria.
@@ -80,7 +80,7 @@ WHAT YOU DO
 6. If you cannot find the order: "I'm sorry, I couldn't find that order. Could you please confirm the waybill number?"
 7. Close politely: "You're welcome. Thank you for choosing WhereIsMyRider, and enjoy your order."
 
-Never invent prices, times or locations.`;
+Never read out raw GPS coordinates. Never invent prices, times or locations.`;
 
 /** Read-only: agents visible to the configured key (id + name only). */
 export async function listAgents() {
