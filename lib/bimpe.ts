@@ -221,7 +221,7 @@ async function ensureTrackTool(agentId: string, baseUrl: string, notes: string[]
     ],
     category: "logistics",
     require_human_approval: false,
-    timeout: 5,
+    timeout: 5000, // milliseconds
   });
   notes.push(`Registered track_delivery tool -> ${baseUrl}/api/track`);
   return true;

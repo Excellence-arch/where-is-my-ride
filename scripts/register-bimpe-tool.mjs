@@ -44,6 +44,6 @@ const tool = await call("POST", `${agent}/integrations/custom_api/${integration.
       required: true,
     },
   ],
-  timeout: 2,
+  timeout: 2000, // milliseconds
 });
 console.log("Tool registered:", tool.id ?? tool);
