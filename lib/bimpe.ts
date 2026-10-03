@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 // Minimal server-side client for the BimpeAI Agent Console API.
 // Mirrors the official SDK (pypi: bimpeai): Bearer auth, base
 // https://api.bimpe.ai/api/v1/console, responses wrapped as { data, meta }.
@@ -133,6 +135,16 @@ export function makeCall(agentId: string, destination: string, isTestCall = true
   });
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** BimpeAI webchat requires channel_user_id to be a UUID; derive a stable one. */
+export function toChannelUserId(sessionId: string) {
+  if (UUID_RE.test(sessionId)) return sessionId.toLowerCase();
+  const h = createHash("sha1").update(`wimr:${sessionId}`).digest("hex");
+  const variant = ((parseInt(h[16], 16) & 0x3) | 0x8).toString(16);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
 /** Send a customer utterance into a (test) webchat conversation keyed by sessionId. */
 export function sendMessage(agentId: string, sessionId: string, message: string) {
   return request<BimpeMessage>("POST", `/agents/${agentId}/conversations/messages`, {
@@ -164,14 +176,17 @@ export async function askAgent(
   budgetMs = 9000,
 ): Promise<string | null> {
   const agentId = await resolveAgentId(appOrigin);
-  const sent = await sendMessage(agentId, sessionId, question);
+  const channelUserId = toChannelUserId(sessionId);
+  const sent = await sendMessage(agentId, channelUserId, question);
   const sentAt = Date.parse(sent.created_at) || Date.now() - 1000;
   const deadline = Date.now() + budgetMs;
   let conversationId: string | undefined;
 
   while (Date.now() < deadline) {
     await sleep(900);
-    conversationId ??= await findConversationId(agentId, sessionId).catch(() => undefined);
+    conversationId ??=
+      (sent as BimpeMessage & { conversation_id?: string }).conversation_id ??
+      (await findConversationId(agentId, channelUserId).catch(() => undefined));
     if (!conversationId) continue;
     const qs = new URLSearchParams({ limit: "10", sort: "-created_at" });
     const msgs = await request<BimpeMessage[]>(
