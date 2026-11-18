@@ -29,18 +29,18 @@ export default function ProximityToast() {
             exit={{ y: -120, opacity: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 28 }}
             onClick={dismiss}
-            className="pointer-events-auto flex items-center gap-3 rounded-[24px] border border-slate-100 bg-white p-4 shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+            className="pointer-events-auto flex items-center gap-3 rounded-[28px] border border-line bg-white p-4"
           >
             <motion.span
               animate={{ rotate: [0, -15, 15, -10, 10, 0] }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ok-wash text-ok"
             >
               <BellRing className="h-5 w-5" />
             </motion.span>
             <div>
-              <p className="text-sm font-bold text-slate-900">{toast.title}</p>
-              <p className="text-sm text-slate-500">{toast.body}</p>
+              <p className="text-sm font-bold text-ink">{toast.title}</p>
+              <p className="text-sm text-muted">{toast.body}</p>
             </div>
           </motion.div>
         )}

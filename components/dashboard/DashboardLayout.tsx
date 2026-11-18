@@ -14,17 +14,24 @@ function greeting() {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 
+const rise = (i: number) => ({
+  initial: { opacity: 0, y: 18 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.6, delay: 0.06 * i, ease: [0.22, 1, 0.36, 1] as const },
+});
+
 export default function DashboardLayout() {
   const unlockGodMode = useApp((s) => s.unlockGodMode);
   const toast = useApp((s) => s.toast);
   const name = useApp((s) => s.name);
   const firstName = name.split(" ")[0] || "there";
-  const initials = name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("") || "?";
+  const initials =
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join("") || "?";
   const taps = useRef<number[]>([]);
 
   // Hidden God Mode: triple-tap the avatar within 600ms.
@@ -37,51 +44,57 @@ export default function DashboardLayout() {
     }
   };
 
+  const deliveries = Object.values(activeDeliveries);
+  const [first, ...rest] = deliveries;
+
   return (
-    <div className="pb-32">
-      <header className="flex items-center justify-between px-5 pb-2 pt-8">
+    <div className="bg-canvas px-5 pb-36 pt-6">
+      <motion.header {...rise(0)} className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={onAvatarTap}
             aria-label="Profile"
-            className="flex h-12 w-12 select-none items-center justify-center rounded-2xl bg-blue-100 text-base font-bold text-blue-700"
+            className="grid size-12 select-none place-items-center rounded-full bg-brand-wash text-[16px] font-bold text-brand"
           >
             {initials}
           </motion.button>
           <div>
-            <p className="text-sm text-slate-500">{greeting()},</p>
-            <p className="text-lg font-bold tracking-tight text-slate-900">{firstName} 👋</p>
+            <p className="text-[14px] text-muted">{greeting()}</p>
+            <p className="text-[17px] font-semibold tracking-[-0.01em] text-ink">{firstName}</p>
           </div>
         </div>
-        <button
-          aria-label="Notifications"
-          className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-        >
-          <Bell className="h-5 w-5 text-slate-700" />
-          <span className={`absolute right-3 top-3 h-2.5 w-2.5 rounded-full border-2 border-white ${toast ? "bg-blue-600" : "bg-rose-500"}`} />
+        <button aria-label="Notifications" className="relative grid size-12 place-items-center rounded-full bg-card ring-1 ring-line">
+          <Bell className="size-5 text-ink" />
+          {toast && <span className="absolute right-2 top-2 grid size-4 place-items-center rounded-full bg-off text-[9px] font-bold text-white">1</span>}
         </button>
-      </header>
+      </motion.header>
 
-      <section className="mt-5">
-        <div className="flex items-baseline justify-between px-5">
-          <h2 className="text-base font-bold text-slate-900">Active deliveries</h2>
-          <span className="text-sm text-slate-500">{Object.keys(activeDeliveries).length} on the road</span>
-        </div>
-        <div className="no-scrollbar mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-5 px-5 pb-4">
-          {Object.values(activeDeliveries).map((d) => (
-            <DeliveryCard key={d.waybillId} waybillId={d.waybillId} />
+      <motion.h1 {...rise(1)} className="mt-7 text-[27px] font-bold tracking-[-0.03em] text-ink">
+        On the way
+      </motion.h1>
+
+      <motion.section {...rise(2)} className="mt-4" aria-label="Active deliveries">
+        <DeliveryCard waybillId={first.waybillId} />
+      </motion.section>
+
+      {rest.length > 0 && (
+        <section className="mt-4 space-y-3" aria-label="Other deliveries">
+          {rest.map((d, i) => (
+            <motion.div key={d.waybillId} {...rise(3 + i)}>
+              <DeliveryCard waybillId={d.waybillId} compact />
+            </motion.div>
           ))}
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section className="px-5">
+      <motion.section {...rise(4 + rest.length)} className="mt-8">
         <VoiceTriggerHero />
-      </section>
+      </motion.section>
 
-      <section className="mt-6 px-5">
+      <motion.section {...rise(5 + rest.length)} className="mt-6">
         <AIAuditTrail />
-      </section>
+      </motion.section>
     </div>
   );
 }

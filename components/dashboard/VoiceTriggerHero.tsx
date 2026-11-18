@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Mic, PhoneCall } from "lucide-react";
+import { ChevronRight, Mic, PhoneCall } from "lucide-react";
 import { useApp } from "@/lib/store";
 
 export default function VoiceTriggerHero() {
@@ -13,42 +13,38 @@ export default function VoiceTriggerHero() {
       <motion.button
         whileTap={{ scale: 0.98 }}
         onClick={() => setVoiceOpen(true)}
-        className="relative w-full overflow-hidden rounded-[24px] bg-blue-600 p-6 text-left shadow-[0_8px_30px_rgb(37,99,235,0.25)]"
+        className="relative flex w-full items-center justify-between gap-4 overflow-hidden rounded-[28px] bg-brand p-6 text-left"
       >
-        {/* Flat decorative rings — solid fills only, no gradients. */}
-        <span className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue-500" />
-        <span className="absolute -right-2 top-16 h-24 w-24 rounded-full bg-blue-700" />
-
-        <div className="relative flex items-center gap-5">
-          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center">
-            <motion.span
-              className="absolute inset-0 rounded-full bg-white/25"
-              animate={{ scale: [1, 1.35, 1], opacity: [0.6, 0, 0.6] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-            />
-            <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white">
-              <Mic className="h-7 w-7 text-blue-600" strokeWidth={2.5} />
-            </span>
-          </div>
-          <div>
-            <p className="text-xl font-bold leading-tight text-white">Ask “Where is my rider?”</p>
-            <p className="mt-1 text-sm text-blue-100">Tap and speak your waybill number. BimpeAI answers instantly.</p>
-          </div>
-        </div>
+        <span>
+          <span className="block text-[13px] font-medium text-white/70">Ask Bimpe</span>
+          <span className="mt-1 block text-[22px] font-bold leading-tight tracking-[-0.02em] text-white">Where is my rider?</span>
+          <span className="mt-1 block text-[14px] text-white/75">Speak or type. She answers in seconds.</span>
+        </span>
+        <span className="relative grid size-16 shrink-0 place-items-center">
+          <motion.span
+            className="absolute inset-0 rounded-full bg-white/25"
+            animate={{ scale: [1, 1.4], opacity: [0.6, 0] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+          />
+          <span className="relative grid size-16 place-items-center rounded-full bg-white">
+            <Mic className="size-7 text-brand" strokeWidth={2.2} />
+          </span>
+        </span>
       </motion.button>
 
       <motion.button
         whileTap={{ scale: 0.98 }}
         onClick={() => openCall("LG-90210")}
-        className="flex w-full items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 text-left shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+        className="flex w-full items-center gap-4 rounded-[28px] bg-card p-4 text-left ring-1 ring-line"
       >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-          <PhoneCall className="h-5 w-5" />
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-ink text-white">
+          <PhoneCall className="size-5" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold text-slate-900">Get a call from BimpeAI</span>
-          <span className="block text-sm text-slate-500">We ring your phone. Ask anything about your order.</span>
+          <span className="block text-[15px] font-semibold text-ink">Get a call from Bimpe</span>
+          <span className="block text-[13px] text-muted">She rings you with the update.</span>
         </span>
+        <ChevronRight className="size-5 text-faint" />
       </motion.button>
     </div>
   );

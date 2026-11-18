@@ -148,7 +148,7 @@ export default function CallSheet() {
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-40 bg-slate-900/40"
+            className="fixed inset-0 z-40 bg-ink/40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -157,25 +157,25 @@ export default function CallSheet() {
           <motion.div
             role="dialog"
             aria-label="Call BimpeAI"
-            className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-md flex-col rounded-t-[32px] bg-white pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.08)]"
+            className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-md flex-col rounded-t-[32px] bg-white pb-safe"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
           >
-            <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-slate-200" />
+            <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-sunken" />
             <div className="flex items-center justify-between px-6 pt-4">
               <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${phase === "answered" ? "bg-emerald-500" : "bg-blue-600"}`} />
-                <span className="text-sm font-semibold text-slate-900">BimpeAI Voice Call</span>
+                <span className={`h-2 w-2 rounded-full ${phase === "answered" ? "bg-ok" : "bg-brand"}`} />
+                <span className="text-sm font-semibold text-ink">BimpeAI Voice Call</span>
                 {simulated && live && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">DEMO</span>
+                  <span className="rounded-full bg-sunken px-2 py-0.5 text-[10px] font-semibold text-muted">DEMO</span>
                 )}
               </div>
               <button
                 onClick={closeCall}
                 aria-label="Close"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-sunken text-ink"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -188,7 +188,7 @@ export default function CallSheet() {
                   [0, 1].map((i) => (
                     <motion.span
                       key={i}
-                      className="absolute inset-0 rounded-full bg-blue-600"
+                      className="absolute inset-0 rounded-full bg-brand"
                       initial={{ scale: 0.7, opacity: 0.3 }}
                       animate={{ scale: 1.5, opacity: 0 }}
                       transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.8, ease: "easeOut" }}
@@ -199,12 +199,12 @@ export default function CallSheet() {
                   transition={{ duration: 0.9, repeat: phase === "ringing" ? Infinity : 0, repeatDelay: 0.6 }}
                   className={`relative flex h-20 w-20 items-center justify-center rounded-full ${
                     phase === "answered"
-                      ? "bg-emerald-500"
+                      ? "bg-ok"
                       : TERMINAL.includes(phase) && phase !== "ended"
-                        ? "bg-rose-500"
+                        ? "bg-off"
                         : phase === "ended"
-                          ? "bg-slate-800"
-                          : "bg-blue-600"
+                          ? "bg-ink"
+                          : "bg-brand"
                   }`}
                 >
                   {phase === "dialing" ? (
@@ -217,22 +217,22 @@ export default function CallSheet() {
                 </motion.span>
               </div>
 
-              <p className="mt-4 text-xl font-bold text-slate-900">{copy.title}</p>
-              <p className="mt-1 text-sm text-slate-500">{detail && TERMINAL.includes(phase) && phase !== "ended" ? detail : copy.sub}</p>
+              <p className="mt-4 text-xl font-bold text-ink">{copy.title}</p>
+              <p className="mt-1 text-sm text-muted">{detail && TERMINAL.includes(phase) && phase !== "ended" ? detail : copy.sub}</p>
               {(phase === "answered" || (phase === "ended" && seconds > 0)) && (
-                <p className="mt-2 font-mono text-lg font-semibold text-slate-900">{formatDuration(seconds)}</p>
+                <p className="mt-2 text-lg font-semibold text-ink">{formatDuration(seconds)}</p>
               )}
             </div>
 
             {/* Order context */}
             {delivery && (
-              <div className="mx-6 mt-5 flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-sm font-bold text-slate-700">
+              <div className="mx-6 mt-5 flex items-center gap-3 rounded-2xl border border-line bg-canvas p-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-sm font-bold text-ink">
                   {delivery.riderName[0]}
                 </span>
                 <div className="min-w-0 flex-1 text-left">
-                  <p className="font-mono text-sm font-bold text-slate-900">{delivery.waybillId}</p>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className="text-sm font-bold text-ink">{delivery.waybillId}</p>
+                  <p className="truncate text-xs text-muted">
                     {delivery.merchant} · Rider {delivery.riderName}
                   </p>
                 </div>
@@ -253,14 +253,14 @@ export default function CallSheet() {
                     >
                       <span
                         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-                          agent ? "bg-blue-100 text-blue-700" : "bg-slate-200 text-slate-700"
+                          agent ? "bg-brand-wash text-brand" : "bg-sunken text-ink"
                         }`}
                       >
                         {agent ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
                       </span>
                       <p
                         className={`max-w-[80%] rounded-2xl px-3 py-2 text-left text-sm ${
-                          agent ? "rounded-bl-md bg-slate-100 text-slate-900" : "rounded-br-md bg-blue-600 text-white"
+                          agent ? "rounded-bl-md bg-sunken text-ink" : "rounded-br-md bg-brand text-white"
                         }`}
                       >
                         {l.message}
@@ -280,11 +280,11 @@ export default function CallSheet() {
                     if (phoneValid) startCall();
                   }}
                 >
-                  <label htmlFor="call-phone" className="text-sm font-medium text-slate-500">
+                  <label htmlFor="call-phone" className="text-sm font-medium text-muted">
                     Ring this number
                   </label>
-                  <div className="mt-2 flex h-14 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 focus-within:border-blue-600 focus-within:bg-white">
-                    <Phone className="h-5 w-5 text-slate-400" />
+                  <div className="mt-2 flex h-14 items-center gap-3 rounded-2xl border border-line bg-canvas px-4 focus-within:border-brand focus-within:bg-white">
+                    <Phone className="h-5 w-5 text-faint" />
                     <input
                       id="call-phone"
                       inputMode="tel"
@@ -292,18 +292,18 @@ export default function CallSheet() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value.replace(/[^\d+\s]/g, "").slice(0, 16))}
                       placeholder="0803 555 0142"
-                      className="h-full flex-1 bg-transparent text-lg font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+                      className="h-full flex-1 bg-transparent text-lg font-semibold text-ink outline-none placeholder:font-normal placeholder:text-faint"
                     />
                   </div>
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     type="submit"
                     disabled={!phoneValid}
-                    className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-base font-semibold text-white disabled:bg-slate-200 disabled:text-slate-400"
+                    className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-brand text-base font-semibold text-white disabled:bg-sunken disabled:text-faint"
                   >
                     <PhoneCall className="h-5 w-5" /> Call me now
                   </motion.button>
-                  <p className="mt-3 text-center text-xs text-slate-400">
+                  <p className="mt-3 text-center text-xs text-faint">
                     Ask things like “Where is my rider?”, “What did I order?” or “Have I paid?”
                   </p>
                 </form>
@@ -311,19 +311,19 @@ export default function CallSheet() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={startCall}
-                    className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 text-sm font-semibold text-white"
+                    className="flex h-12 items-center justify-center gap-2 rounded-full bg-brand text-sm font-semibold text-white"
                   >
                     <RotateCcw className="h-4 w-4" /> Call again
                   </button>
                   <button
                     onClick={closeCall}
-                    className="flex h-12 items-center justify-center rounded-2xl border border-slate-200 text-sm font-semibold text-slate-900"
+                    className="flex h-12 items-center justify-center rounded-full border border-line text-sm font-semibold text-ink"
                   >
                     Done
                   </button>
                 </div>
               ) : (
-                <p className="text-center text-xs text-slate-400">
+                <p className="text-center text-xs text-faint">
                   Keep this screen open to see the live transcript. You can close it any time.
                 </p>
               )}
