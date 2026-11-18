@@ -10,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
     background_color: "#f8fafc",
-    theme_color: "#2563eb",
+    theme_color: "#2356f6",
     shortcuts: [
       { name: "Rider app", short_name: "Rider", url: "/rider", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
     ],
