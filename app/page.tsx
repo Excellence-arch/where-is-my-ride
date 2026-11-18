@@ -4,7 +4,7 @@ import Features from "@/components/site/Features";
 import Footer from "@/components/site/Footer";
 import Hero from "@/components/site/Hero";
 import HowItWorks from "@/components/site/HowItWorks";
-import { MotionRoot, ScrollProgress } from "@/components/site/motion";
+import { MotionRoot } from "@/components/site/motion";
 import Nav from "@/components/site/Nav";
 import WaysToAsk from "@/components/site/WaysToAsk";
 
@@ -18,7 +18,6 @@ export default function Landing() {
   return (
     <MotionRoot>
       <div className="overflow-x-clip bg-white font-sans text-ink">
-        <ScrollProgress />
         <Nav />
         <main>
           <Hero />

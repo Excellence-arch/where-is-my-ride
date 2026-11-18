@@ -158,13 +158,6 @@ export function usePointer() {
   return { px, py, onPointerMove, onPointerLeave };
 }
 
-/** Thin brand-blue bar at the top that fills as the page scrolls. */
-export function ScrollProgress() {
-  const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 });
-  return <motion.div aria-hidden className="fixed inset-x-0 top-0 z-[60] h-[3px] origin-left bg-brand" style={{ scaleX }} />;
-}
-
 /** Equaliser bars for "listening" and "speaking" states. */
 export function Waveform({
   bars = 24,
