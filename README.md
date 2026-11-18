@@ -16,6 +16,14 @@ npm run build && npm start   # production + service worker
 
 Routes: `/` is the landing page, `/app` the customer app (sign in with any phone number and any 4-digit code), and `/rider` the rider app.
 
+## Design
+
+The UI follows the WhereIsMyRider design system in Figma: [where-is-my-ride (Figma)](https://www.figma.com/design/fiM4cd7LbE4w70gcnHxSOs/where-is-my-ride). The file holds the mobile app, the landing page at desktop, tablet and mobile widths, the case study, the App Store screenshots and the design system.
+
+- Colours, radius and the font (Plus Jakarta Sans) live as Tailwind tokens in `app/globals.css`, mirrored from the Figma variables.
+- The landing page is in `components/site/`. Motion uses Framer Motion, and the live map tile is a small three.js scene (`LiveMap3D.tsx`) that pauses when off screen.
+- Images exported from Figma are in `public/landing/`.
+
 ## Screens and components
 
 | Workflow | Components |

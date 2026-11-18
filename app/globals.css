@@ -1,7 +1,34 @@
 @import "tailwindcss";
 
+/* Design tokens, mirrored from the Figma file's variables (Colour / Size). */
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand: #2356f6;
+  --color-brand-deep: #0a3be0;
+  --color-brand-wash: #e4ecff;
+  --color-sky: #9cc2ff;
+
+  --color-card: #ffffff;
+  --color-canvas: #f5f6f8;
+  --color-sunken: #e9edf4;
+  --color-ink: #0a0a0c;
+
+  --color-muted: #6b7080;
+  --color-faint: #a9aebb;
+  --color-line: #e3e7ef;
+
+  --color-ok: #12a150;
+  --color-ok-wash: #ddf6e7;
+  --color-late: #e08a00;
+  --color-off: #d92d20;
+
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-xl: 36px;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html {
@@ -16,7 +43,13 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* Hide scrollbars on the horizontal delivery rail but keep it scrollable. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Hide scrollbars on horizontal rails but keep them scrollable. */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
