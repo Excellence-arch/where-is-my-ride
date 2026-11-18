@@ -40,10 +40,10 @@ export default function Home() {
     return () => window.removeEventListener("keydown", onKey);
   }, [login]);
 
-  if (!ready) return <div className="min-h-dvh bg-slate-50" />;
+  if (!ready) return <div className="min-h-dvh bg-canvas" />;
 
   return (
-    <main className="relative mx-auto min-h-dvh w-full max-w-md overflow-hidden bg-slate-50">
+    <main className="relative mx-auto min-h-dvh w-full max-w-md overflow-hidden bg-canvas">
       <AnimatePresence mode="wait">
         <motion.div
           key={screen}

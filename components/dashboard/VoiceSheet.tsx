@@ -182,7 +182,7 @@ export default function VoiceSheet() {
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-40 bg-slate-900/40"
+            className="fixed inset-0 z-40 bg-ink/40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -191,7 +191,7 @@ export default function VoiceSheet() {
           <motion.div
             role="dialog"
             aria-label="BimpeAI voice assistant"
-            className="fixed inset-x-0 bottom-0 z-50 mx-auto flex h-[92dvh] max-w-md flex-col rounded-t-[32px] bg-white pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.08)]"
+            className="fixed inset-x-0 bottom-0 z-50 mx-auto flex h-[92dvh] max-w-md flex-col rounded-t-[32px] bg-white pb-safe"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -201,16 +201,16 @@ export default function VoiceSheet() {
             dragElastic={{ top: 0, bottom: 0.5 }}
             onDragEnd={(_, info) => info.offset.y > 120 && setOpen(false)}
           >
-            <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-slate-200" />
+            <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-sunken" />
             <div className="flex items-center justify-between px-6 pt-4">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-blue-600" />
-                <span className="text-sm font-semibold text-slate-900">BimpeAI Assistant</span>
+                <span className="h-2 w-2 rounded-full bg-brand" />
+                <span className="text-sm font-semibold text-ink">BimpeAI Assistant</span>
               </div>
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Close"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-sunken text-ink"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -227,7 +227,7 @@ export default function VoiceSheet() {
                   [0, 1, 2].map((i) => (
                     <motion.span
                       key={i}
-                      className="absolute inset-0 rounded-full bg-blue-600"
+                      className="absolute inset-0 rounded-full bg-brand"
                       initial={{ scale: 0.6, opacity: 0.35 }}
                       animate={{ scale: 1.4, opacity: 0 }}
                       transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.6, ease: "easeOut" }}
@@ -237,8 +237,8 @@ export default function VoiceSheet() {
                   animate={phase === "thinking" ? { scale: [1, 0.92, 1] } : { scale: 1 }}
                   transition={{ duration: 1, repeat: phase === "thinking" ? Infinity : 0 }}
                   className={`relative flex h-28 w-28 items-center justify-center rounded-full ${
-                    phase === "answer" ? "bg-emerald-500" : phase === "error" ? "bg-rose-500" : "bg-blue-600"
-                  } shadow-[0_8px_30px_rgb(37,99,235,0.3)]`}
+                    phase === "answer" ? "bg-ok" : phase === "error" ? "bg-off" : "bg-brand"
+                  }`}
                 >
                   {phase === "thinking" ? (
                     <Loader2 className="h-10 w-10 animate-spin text-white" />
@@ -256,14 +256,14 @@ export default function VoiceSheet() {
                   Array.from({ length: 9 }).map((_, i) => (
                     <motion.span
                       key={i}
-                      className="w-1.5 rounded-full bg-blue-600"
+                      className="w-1.5 rounded-full bg-brand"
                       animate={{ height: [8, 28, 12, 22, 8] }}
                       transition={{ duration: 1, repeat: Infinity, delay: i * 0.08 }}
                     />
                   ))}
               </div>
 
-              <p className="mt-2 text-sm font-medium uppercase tracking-wider text-slate-400">
+              <p className="mt-2 text-sm font-medium text-faint">
                 {phase === "listening" && "Listening…"}
                 {phase === "thinking" && "Checking with your rider…"}
                 {phase === "answer" && (answer?.source === "bimpeai" ? "BimpeAI agent" : "Live tracker")}
@@ -271,29 +271,29 @@ export default function VoiceSheet() {
                 {phase === "error" && "Something went wrong"}
               </p>
 
-              {transcript && <p className="mt-3 text-lg text-slate-500">“{transcript}”</p>}
+              {transcript && <p className="mt-3 text-lg text-muted">“{transcript}”</p>}
 
               <AnimatePresence>
                 {phase === "answer" && answer && (
                   <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-6 w-full rounded-[24px] border border-slate-100 bg-slate-50 p-5 text-left"
+                    className="mt-6 w-full rounded-[28px] border border-line bg-canvas p-5 text-left"
                   >
-                    <p className="text-xl font-semibold leading-snug text-slate-900">{answer.text}</p>
+                    <p className="text-xl font-semibold leading-snug text-ink">{answer.text}</p>
                     <div className="mt-4 grid grid-cols-2 gap-2">
                       <button
                         onClick={() => {
                           setOpen(false);
                           openTracker(answer.waybillId || PRIMARY_WAYBILL);
                         }}
-                        className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 text-sm font-semibold text-white"
+                        className="flex h-12 items-center justify-center gap-2 rounded-full bg-brand text-sm font-semibold text-white"
                       >
                         <MapIcon className="h-4 w-4" /> Live map
                       </button>
                       <button
                         onClick={callMe}
-                        className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-900"
+                        className="flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-white text-sm font-semibold text-ink"
                       >
                         <PhoneCall className="h-4 w-4" /> Call me
                       </button>
@@ -313,18 +313,18 @@ export default function VoiceSheet() {
                     setDraft("");
                     ask(q);
                   }}
-                  className="flex h-14 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 pl-4 pr-2 focus-within:border-blue-600"
+                  className="flex h-14 items-center gap-2 rounded-2xl border border-line bg-canvas pl-4 pr-2 focus-within:border-brand"
                 >
                   <input
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     placeholder="e.g. Where is LG-90210?"
-                    className="h-full flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
+                    className="h-full flex-1 bg-transparent text-base text-ink outline-none placeholder:text-faint"
                   />
                   <button
                     type="submit"
                     aria-label="Ask"
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-white"
                   >
                     <Send className="h-4 w-4" />
                   </button>
@@ -336,7 +336,7 @@ export default function VoiceSheet() {
                     setTyping(true);
                     setPhase("idle");
                   }}
-                  className="mx-auto flex items-center gap-2 text-sm font-medium text-slate-500"
+                  className="mx-auto flex items-center gap-2 text-sm font-medium text-muted"
                 >
                   <Keyboard className="h-4 w-4" /> Type instead
                 </button>
@@ -349,7 +349,7 @@ export default function VoiceSheet() {
                       cancelListening();
                       ask(s);
                     }}
-                    className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700"
+                    className="shrink-0 rounded-full border border-line bg-white px-3 py-2 text-xs font-medium text-ink"
                   >
                     {s}
                   </button>

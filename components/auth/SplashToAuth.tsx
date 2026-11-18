@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Bike, Loader2, MapPin, ShieldCheck, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bike, Loader2, Navigation, ShieldCheck, User } from "lucide-react";
 import { useApp } from "@/lib/store";
 
 type Step = "phone" | "otp" | "name";
@@ -80,34 +80,32 @@ export default function SplashToAuth() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col px-6 pb-10 pt-16">
+    <div className="flex min-h-dvh flex-col bg-canvas px-6 pb-10 pt-14">
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 shadow-[0_8px_30px_rgb(37,99,235,0.25)]">
-          <MapPin className="h-6 w-6 text-white" strokeWidth={2.5} />
+        <div className="grid size-11 place-items-center rounded-[12px] bg-brand">
+          <Navigation className="size-5 text-white" strokeWidth={2.4} />
         </div>
-        <div>
-          <p className="text-lg font-bold tracking-tight text-slate-900">WhereIsMyRider</p>
-          <p className="text-sm text-slate-500">Track every dispatch, by voice.</p>
-        </div>
+        <p className="text-[18px] font-bold tracking-[-0.02em] text-ink">WhereIsMyRider</p>
       </div>
 
       <div className="mt-14">
-        <h1 className="text-[32px] font-bold leading-tight tracking-tight text-slate-900">
+        <h1 className="text-[38px] font-extrabold leading-[1.08] tracking-[-0.04em] text-ink">
           {step === "phone" ? (
             <>
-              Know exactly where
+              Stop calling
               <br />
-              your rider is.
+              your rider.{" "}
+              <span className="mt-2 inline-block -rotate-2 rounded-[16px] bg-brand px-3 pb-1 text-white">Just ask.</span>
             </>
           ) : step === "otp" ? (
-            "Enter your code"
+           "Enter your code"
           ) : (
-            "What's your name?"
+           "What's your name?"
           )}
         </h1>
-        <p className="mt-3 text-base text-slate-500">
+        <p className="mt-4 text-[16px] text-muted">
           {step === "phone"
-            ? "Sign in or create an account with your phone number."
+            ? "Sign in or sign up with your phone number."
             : step === "otp"
               ? `We sent a 4-digit code to ${displayPhone}.`
               : "So your rider and our assistant know who they're delivering to."}
@@ -124,14 +122,14 @@ export default function SplashToAuth() {
                 e.preventDefault();
                 if (phoneValid) setStep("otp");
               }}
-              className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+              className="rounded-[28px] border border-line bg-white p-5"
             >
-              <label htmlFor="phone" className="text-sm font-medium text-slate-500">
+              <label htmlFor="phone" className="text-sm font-medium text-muted">
                 Phone number
               </label>
-              <div className="mt-2 flex h-16 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 focus-within:border-blue-600 focus-within:bg-white">
-                <span className="text-lg font-semibold text-slate-900">🇳🇬 +234</span>
-                <span className="h-6 w-px bg-slate-200" />
+              <div className="mt-2 flex h-16 items-center gap-3 rounded-2xl border border-line bg-canvas px-4 focus-within:border-brand focus-within:bg-white">
+                <span className="shrink-0 whitespace-nowrap text-lg font-semibold text-ink">🇳🇬 +234</span>
+                <span className="h-6 w-px bg-sunken" />
                 <input
                   id="phone"
                   inputMode="tel"
@@ -139,7 +137,7 @@ export default function SplashToAuth() {
                   placeholder="803 555 0142"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, "").slice(0, 14))}
-                  className="h-full w-full bg-transparent text-lg font-semibold tracking-wide text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+                  className="h-full w-full bg-transparent text-lg font-semibold tracking-wide text-ink outline-none placeholder:font-normal placeholder:text-faint"
                   autoFocus
                 />
               </div>
@@ -147,7 +145,7 @@ export default function SplashToAuth() {
                 whileTap={{ scale: 0.97 }}
                 type="submit"
                 disabled={!phoneValid}
-                className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-base font-semibold text-white transition-colors disabled:bg-slate-200 disabled:text-slate-400"
+                className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-brand text-base font-semibold text-white transition-colors disabled:bg-sunken disabled:text-faint"
               >
                 Send code <ArrowRight className="h-5 w-5" />
               </motion.button>
@@ -156,7 +154,7 @@ export default function SplashToAuth() {
             <motion.div
               key="otp"
               {...slide}
-              className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+              className="rounded-[28px] border border-line bg-white p-5"
             >
               <div className="flex justify-between gap-3">
                 {otp.map((d, i) => (
@@ -174,9 +172,9 @@ export default function SplashToAuth() {
                     onKeyDown={(e) => {
                       if (e.key === "Backspace" && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus();
                     }}
-                    className={`h-16 w-full rounded-2xl border text-center text-2xl font-bold text-slate-900 outline-none transition-colors ${
-                      d ? "border-blue-600 bg-white" : "border-slate-200 bg-slate-50"
-                    } focus:border-blue-600 focus:bg-white`}
+                    className={`h-16 w-full rounded-2xl border text-center text-2xl font-bold text-ink outline-none transition-colors ${
+                      d ? "border-brand bg-white" : "border-line bg-canvas"
+                    } focus:border-brand focus:bg-white`}
                   />
                 ))}
               </div>
@@ -187,11 +185,11 @@ export default function SplashToAuth() {
                     setOtp(["", "", "", ""]);
                     setStep("phone");
                   }}
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-500"
+                  className="flex items-center gap-1.5 text-sm font-medium text-muted"
                 >
                   <ArrowLeft className="h-4 w-4" /> Change number
                 </button>
-                <span className="flex items-center gap-1.5 text-sm text-slate-400">
+                <span className="flex items-center gap-1.5 text-sm text-faint">
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />} Demo: any 4 digits
                 </span>
               </div>
@@ -213,13 +211,13 @@ export default function SplashToAuth() {
                   setBusy(false);
                 }
               }}
-              className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+              className="rounded-[28px] border border-line bg-white p-5"
             >
-              <label htmlFor="fullname" className="text-sm font-medium text-slate-500">
+              <label htmlFor="fullname" className="text-sm font-medium text-muted">
                 Full name
               </label>
-              <div className="mt-2 flex h-16 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 focus-within:border-blue-600 focus-within:bg-white">
-                <User className="h-5 w-5 text-slate-400" />
+              <div className="mt-2 flex h-16 items-center gap-3 rounded-2xl border border-line bg-canvas px-4 focus-within:border-brand focus-within:bg-white">
+                <User className="h-5 w-5 text-faint" />
                 <input
                   id="fullname"
                   autoComplete="name"
@@ -227,16 +225,16 @@ export default function SplashToAuth() {
                   placeholder="e.g. Adaeze Okafor"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value.slice(0, 60))}
-                  className="h-full w-full bg-transparent text-lg font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+                  className="h-full w-full bg-transparent text-lg font-semibold text-ink outline-none placeholder:font-normal placeholder:text-faint"
                   autoFocus
                 />
               </div>
-              {error && <p className="mt-3 text-sm font-medium text-rose-600">{error}</p>}
+              {error && <p className="mt-3 text-sm font-medium text-off">{error}</p>}
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 type="submit"
                 disabled={!nameValid || busy}
-                className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-base font-semibold text-white transition-colors disabled:bg-slate-200 disabled:text-slate-400"
+                className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-brand text-base font-semibold text-white transition-colors disabled:bg-sunken disabled:text-faint"
               >
                 {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Create account <ArrowRight className="h-5 w-5" /></>}
               </motion.button>
@@ -247,12 +245,12 @@ export default function SplashToAuth() {
 
       <a
         href="/rider"
-        className="mb-4 flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700"
+        className="mb-4 flex items-center justify-center gap-2 rounded-full border border-line bg-white py-3.5 text-sm font-semibold text-ink"
       >
         <Bike className="h-4 w-4" /> I&apos;m a rider
       </a>
-      <p className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
-        <ShieldCheck className="h-4 w-4" /> Voice assistant powered by BimpeAI
+      <p className="flex items-center justify-center gap-1.5 text-xs text-faint">
+        <ShieldCheck className="h-4 w-4" /> Voice by BimpeAI
       </p>
     </div>
   );

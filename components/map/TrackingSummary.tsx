@@ -1,35 +1,30 @@
 "use client";
 
 import { ArrowLeft, Phone } from "lucide-react";
-import StatusPill from "@/components/ui/StatusPill";
 import type { LiveDelivery } from "@/lib/demoState";
 import { useApp } from "@/lib/store";
 
+const glass = "bg-white/80 ring-1 ring-white backdrop-blur-xl";
+
 export default function TrackingSummary({ delivery }: { delivery: LiveDelivery }) {
   const go = useApp((s) => s.go);
+  const dot = delivery.offline ? "bg-off" : delivery.status === "delayed" ? "bg-late" : "bg-ok";
 
   return (
-    <div className="absolute inset-x-4 top-4 z-10 flex items-center gap-3 rounded-[24px] border border-slate-100 bg-white p-3 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
-      <button
-        onClick={() => go("dashboard")}
-        aria-label="Back to dashboard"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-700"
-      >
-        <ArrowLeft className="h-5 w-5" />
+    <div className="absolute inset-x-5 top-5 z-10 flex items-center justify-between gap-3">
+      <button onClick={() => go("dashboard")} aria-label="Back to home" className={`grid size-12 shrink-0 place-items-center rounded-full text-ink ${glass}`}>
+        <ArrowLeft className="size-5" />
       </button>
-      <div className="min-w-0 flex-1">
-        <p className="font-mono text-sm font-bold text-slate-900">{delivery.waybillId}</p>
-        <p className="truncate text-sm text-slate-500">
-          Rider <span className="font-semibold text-slate-900">{delivery.riderName}</span> · {delivery.vehicle.split(" · ")[1]}
-        </p>
-      </div>
-      <StatusPill status={delivery.status} />
+      <span className={`flex h-12 min-w-0 items-center gap-2 rounded-full px-5 text-[15px] font-semibold text-ink ${glass}`}>
+        <span className={`size-2 shrink-0 rounded-full ${dot}`} />
+        <span className="truncate">{delivery.waybillId}</span>
+      </span>
       <a
         href={`tel:${delivery.riderPhone.replace(/\s/g, "")}`}
         aria-label={`Call ${delivery.riderName}`}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white"
+        className="grid size-12 shrink-0 place-items-center rounded-full bg-ink text-white"
       >
-        <Phone className="h-5 w-5" />
+        <Phone className="size-5" />
       </a>
     </div>
   );
